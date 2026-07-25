@@ -3,7 +3,8 @@
 import pw from '/usr/lib/node_modules/playwright/index.js';
 const { chromium } = pw;
 
-const URL = process.argv[2];
+const BASE = process.argv[2];
+
 const out = [];
 const log = (...a) => { const s = a.join(' '); out.push(s); console.log(s); };
 let fails = 0;
@@ -12,13 +13,30 @@ const ok = (cond, msg) => { log((cond ? '  PASS  ' : '  FAIL  ') + msg); if (!co
 const b = await chromium.launch({ args: ['--no-sandbox'] });
 const p = await b.newPage({ viewport: { width: 420, height: 900 }, deviceScaleFactor: 2 });
 p.on('pageerror', e => { log('  JS ERROR  ' + e.message); fails++; });
-await p.goto(URL, { waitUntil: 'networkidle' });
+await p.goto(BASE, { waitUntil: 'networkidle' });
 
-/* ── 1. Google sign-in (demo identity) ── */
-log('\n=== 1. SIGN IN ===');
-await p.click('[data-ref="google-signin"]');
-await p.waitForSelector('#sheet .itemrow');
-await p.locator('#sheet .itemrow').first().click();
+/* ── 1. Sign-in gate ──
+   Real Google auth can't be driven headlessly, so we assert the gate behaves
+   (no client ID -> setup help, never a silent dead button) and then inject the
+   session Google would have produced, to test everything downstream of it. */
+log('\n=== 1. SIGN IN GATE ===');
+const hasClientId = await p.evaluate(() => !!(window.HOUSECART_CONFIG?.GOOGLE_CLIENT_ID || '').trim());
+log(`  config.js client ID present: ${hasClientId}`);
+if (!hasClientId) {
+  ok(await p.isVisible('#gsi-setup'), 'no client ID -> shows setup instructions, not a dead button');
+  const origins = await p.textContent('#origins');
+  log(`  origins it tells you to authorize: ${origins.replace(/\s+/g, ' ').trim()}`);
+  ok(origins.includes(new URL(BASE).origin), 'setup panel names the exact origin being served');
+} else {
+  await p.waitForTimeout(2500);
+  ok(await p.evaluate(() => document.querySelector('#gsi-btn').children.length > 0),
+     'client ID present -> real Google button rendered');
+}
+ok(await p.evaluate(() => !document.querySelector('[data-ref="prototype-signin"]')),
+   'prototype/demo sign-in is gone');
+// inject the identity Google's JWT would have yielded
+await p.evaluate(() => signIn({ id: 'u1', name: 'Kaylee Renaud', email: 'kaylee@example.com', pic: '', venmo: 'kaylee-r' }));
+await p.waitForTimeout(400);
 ok(await p.isVisible('[data-ref="house-gate"]'), 'signed in -> lands on household gate');
 
 /* ── 2. Create a house, then seed 2 more housemates joining by code ── */
@@ -32,8 +50,8 @@ ok(/^[A-Z]+\d{2}$/.test(code), `house created with joinable code: ${code}`);
 // two housemates join with the code (same flow the real app uses)
 await p.evaluate(() => {
   const extra = [
-    { id: 'u2', name: 'Sam Okafor', email: 'sam@gmail.com', venmo: 'sam-okafor' },
-    { id: 'u3', name: 'Priya Raman', email: 'priya@gmail.com', venmo: 'priya-raman' }
+    { id: 'u2', name: 'Sam Okafor', email: 'sam@example.com', venmo: 'sam-okafor' },
+    { id: 'u3', name: 'Priya Raman', email: 'priya@example.com', venmo: 'priya-raman' }
   ];
   const hs = JSON.parse(localStorage.getItem('hc:houses'));
   const c = JSON.parse(localStorage.getItem('hc:cur'));

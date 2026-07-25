@@ -2,6 +2,8 @@
 
 Household groceries + receipt splitting. Mobile-first web app.
 
+See **[SETUP.md](SETUP.md)** to turn on Google sign-in.
+
 **Flow:** Google sign-in → join a house by code → scan groceries into a shared
 pantry → photograph a receipt → OCR pulls the line items → **you pick which
 ones the house splits** → tax allocated proportionally → one-tap Venmo requests
@@ -26,7 +28,7 @@ node verify.mjs http://localhost:8123
 | Receipt OCR | **Real** — Tesseract.js, runs client-side, no upload |
 | Line-item parsing, split math, tax allocation | **Real** |
 | Venmo charge links | **Real** — `venmo.com/<handle>?txn=charge&amount=&note=` |
-| Google sign-in | **Stubbed** — drop your Cloud Console web client ID into `GOOGLE_CLIENT_ID` at the top of the script and the real GIS button takes over |
+| Google sign-in | **Real** — Google Identity Services. Needs an OAuth Web client ID in `prototype/config.js`; see SETUP.md |
 | Storage | **localStorage** — needs a server + DB before housemates on different phones share a house for real |
 
 ## Next steps for production
