@@ -1,0 +1,22 @@
+{
+  "name": "HouseCart — household groceries & receipt splitting",
+  "kind": "web",
+  "runtime": "static",
+  "run_cmd": "python3 -m http.server 8123 --directory prototype",
+  "entry": "prototype/index.html",
+  "description": "Mobile-first web app for shared households: scan grocery barcodes (real Open Food Facts lookup -> name + product image) or add items manually with a photo; photograph a receipt and OCR it in-browser (Tesseract.js) into line items; pick WHICH items to split and who shares each one; tax allocated proportionally; settle up via one-tap Venmo charge links; per-household spending tracking over time.",
+  "real_vs_mocked": {
+    "real": [
+      "Barcode scanning (BarcodeDetector API, ZXing fallback)",
+      "Open Food Facts product lookup: name, brand, size, image",
+      "Receipt OCR via Tesseract.js running client-side",
+      "Receipt line-item parsing + per-item split math + proportional tax",
+      "Venmo charge deep links (venmo.com/<handle>?txn=charge)",
+      "Household codes, membership, spending ledger (localStorage)"
+    ],
+    "mocked": [
+      "Google sign-in — renders the REAL Google Identity Services button when GOOGLE_CLIENT_ID is filled in; falls back to a demo identity picker until Kaylee creates the Cloud Console client",
+      "Persistence is localStorage (per-browser), not a shared server DB"
+    ]
+  }
+}

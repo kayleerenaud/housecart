@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>HouseCart — split the groceries, not the friendship</title>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+:root{
+  --bg:#f6f4ef; --card:#fffdf9; --ink:#1d1b16; --muted:#7c766a; --line:#e6e1d6;
+  --accent:#2f7d55; --accent-soft:#e6f2ea; --warn:#b4542a; --venmo:#008CFF;
+  --radius:14px; --shadow:0 1px 2px rgba(29,27,22,.05),0 8px 24px rgba(29,27,22,.06);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg);color:var(--ink);
+  font:15px/1.45 ui-sans-serif,-apple-system,"SF Pro Text","Segoe UI",Roboto,system-ui,sans-serif;
+  padding-bottom:78px;
+}
+h1,h2,h3{margin:0;font-weight:640;letter-spacing:-.01em}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
+input,select{font:inherit;color:inherit}
+.wrap{max-width:520px;margin:0 auto;padding:0 14px}
+.hide{display:none!important}
+
+/* ---------- top bar ---------- */
+.topbar{position:sticky;top:0;z-index:40;background:rgba(246,244,239,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.topbar .wrap{display:flex;align-items:center;gap:10px;height:56px}
+.logo{display:flex;align-items:center;gap:8px;font-weight:700;letter-spacing:-.02em;font-size:17px}
+.logo .dot{width:22px;height:22px;border-radius:7px;background:var(--accent);display:grid;place-items:center;color:#fff;font-size:12px}
+.spacer{flex:1}
+.housepill{display:flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:5px 10px;font-size:12.5px;font-weight:600}
+.housepill .code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--accent);letter-spacing:.06em}
+.avatar{width:28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:12px;font-weight:700;flex:0 0 auto;overflow:hidden}
+.avatar img{width:100%;height:100%;object-fit:cover}
+
+/* ---------- cards / bits ---------- */
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px;margin:12px 0}
+.card h2{font-size:15px;margin-bottom:2px}
+.sub{color:var(--muted);font-size:12.5px}
+.btn{background:var(--accent);color:#fff;border-radius:11px;padding:11px 14px;font-weight:620;font-size:14.5px;display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%}
+.btn:active{transform:scale(.99)}
+.btn.ghost{background:var(--card);color:var(--ink);border:1px solid var(--line)}
+.btn.venmo{background:var(--venmo)}
+.btn.sm{width:auto;padding:8px 12px;font-size:13px;border-radius:9px}
+.btn[disabled]{opacity:.45;pointer-events:none}
+.field{width:100%;background:#fff;border:1px solid var(--line);border-radius:11px;padding:11px 12px;margin:6px 0}
+.field:focus{outline:2px solid var(--accent-soft);border-color:var(--accent)}
+.row{display:flex;gap:8px;align-items:center}
+.tag{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:3px 7px;border-radius:6px;background:var(--accent-soft);color:var(--accent)}
+.tag.grey{background:#efece4;color:var(--muted)}
+.empty{text-align:center;color:var(--muted);padding:30px 14px;font-size:13.5px}
+.empty .big{font-size:30px;display:block;margin-bottom:6px;opacity:.6}
+
+/* ---------- pantry ---------- */
+.itemrow{display:flex;gap:11px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}
+.itemrow:last-child{border-bottom:0}
+.thumb{width:46px;height:46px;border-radius:10px;background:#efece4;flex:0 0 auto;object-fit:cover;display:grid;place-items:center;font-size:19px;color:var(--muted)}
+.iname{font-weight:600;font-size:14px}
+.imeta{color:var(--muted);font-size:12px}
+.x{color:var(--muted);font-size:19px;padding:4px 6px;line-height:1}
+
+/* ---------- receipt ---------- */
+#video{width:100%;border-radius:12px;background:#000;aspect-ratio:4/3;object-fit:cover}
+.progress{height:6px;background:#efece4;border-radius:99px;overflow:hidden;margin-top:10px}
+.progress i{display:block;height:100%;background:var(--accent);width:0;transition:width .25s}
+.line{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+.line:last-child{border-bottom:0}
+.line.off{opacity:.42}
+.chk{width:22px;height:22px;border-radius:7px;border:2px solid var(--line);flex:0 0 auto;display:grid;place-items:center;background:#fff;color:#fff;font-size:13px}
+.line.on .chk{background:var(--accent);border-color:var(--accent)}
+.lname{flex:1;font-size:14px;min-width:0}
+.lname input{border:0;background:transparent;width:100%;padding:2px 0;font-weight:560}
+.lprice{font-variant-numeric:tabular-nums;font-weight:640;font-size:14px}
+.who{display:flex;gap:5px;flex-wrap:wrap;padding:2px 0 8px 32px}
+.who button{border:1px solid var(--line);background:#fff;border-radius:999px;padding:3px 9px;font-size:11.5px;font-weight:600;color:var(--muted)}
+.who button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.totrow{display:flex;justify-content:space-between;padding:5px 0;font-size:13.5px}
+.totrow.big{font-size:16px;font-weight:700;border-top:1px solid var(--line);margin-top:6px;padding-top:9px}
+
+/* ---------- spending ---------- */
+.bar{height:9px;border-radius:99px;background:#efece4;overflow:hidden;margin-top:5px}
+.bar i{display:block;height:100%;background:var(--accent)}
+.stat{display:flex;gap:10px}
+.stat>div{flex:1;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:11px}
+.stat .n{font-size:21px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.stat .l{font-size:11.5px;color:var(--muted);margin-top:1px}
+
+/* ---------- tabbar ---------- */
+.tabbar{position:fixed;bottom:0;left:0;right:0;background:rgba(255,253,249,.94);backdrop-filter:blur(12px);border-top:1px solid var(--line);z-index:50;padding-bottom:env(safe-area-inset-bottom)}
+.tabbar .wrap{display:flex;height:62px}
+.tabbar button{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--muted);font-size:10.5px;font-weight:600}
+.tabbar button.on{color:var(--accent)}
+.tabbar svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+
+/* ---------- signin / modal ---------- */
+.center{min-height:100dvh;display:grid;place-items:center;padding:24px}
+.hero{text-align:center;max-width:340px}
+.hero .mark{width:60px;height:60px;border-radius:18px;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:30px;margin:0 auto 16px}
+.modal{position:fixed;inset:0;background:rgba(29,27,22,.42);z-index:100;display:grid;place-items:end center}
+.sheet{background:var(--card);width:100%;max-width:520px;border-radius:18px 18px 0 0;padding:18px 16px calc(22px + env(safe-area-inset-bottom));max-height:88dvh;overflow:auto}
+.toast{position:fixed;bottom:78px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:9px 15px;border-radius:99px;font-size:13px;z-index:200;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.on{opacity:1}
+</style>
+</head>
+<body>
+
+<!-- ══════════════ SIGN IN ══════════════ -->
+<section id="signin" class="center" data-ref="signin-screen">
+  <div class="hero">
+    <div class="mark">🧺</div>
+    <h1 style="font-size:26px">HouseCart</h1>
+    <p class="sub" style="margin:8px 0 22px">Scan the groceries. Snap the receipt. Split only what's shared. Get paid back on Venmo.</p>
+    <div id="gsi-real"></div>
+    <button class="btn ghost" id="btn-google" data-ref="google-signin" style="justify-content:center">
+      <svg width="17" height="17" viewBox="0 0 48 48"><path fill="#4285F4" d="M45 24c0-1.6-.1-2.7-.4-3.9H24v7.1h12c-.2 1.8-1.5 4.6-4.4 6.5l6.7 5.2C42.2 35.3 45 30.1 45 24z"/><path fill="#34A853" d="M24 46c5.9 0 10.8-1.9 14.4-5.3l-6.9-5.3c-1.8 1.3-4.3 2.2-7.5 2.2-5.7 0-10.6-3.8-12.3-9l-7.1 5.5C8.2 41.1 15.5 46 24 46z"/><path fill="#FBBC05" d="M11.7 28.6A13.5 13.5 0 0 1 11 24c0-1.6.3-3.2.7-4.6l-7.1-5.6A22 22 0 0 0 2 24c0 3.6.9 6.9 2.4 10.1l7.3-5.5z"/><path fill="#EA4335" d="M24 10.4c4 0 6.8 1.7 8.3 3.2l6.1-6C34.7 4.1 29.9 2 24 2 15.5 2 8.2 6.9 4.6 14l7.1 5.5c1.7-5.3 6.6-9.1 12.3-9.1z"/></svg>
+      Continue with Google
+    </button>
+    <p class="sub" id="gsi-note" style="margin-top:12px;font-size:11.5px"></p>
+  </div>
+</section>
+
+<!-- ══════════════ HOUSE GATE ══════════════ -->
+<section id="housegate" class="center hide" data-ref="house-gate">
+  <div class="hero" style="max-width:360px;width:100%">
+    <div class="mark">🏠</div>
+    <h1 style="font-size:23px">Join a household</h1>
+    <p class="sub" style="margin:8px 0 18px">Everyone in the house shares one code.</p>
+    <input class="field" id="join-code" data-ref="house-code-input" placeholder="Enter house code (e.g. MAPLE7)" style="text-align:center;text-transform:uppercase;letter-spacing:.14em;font-weight:700">
+    <button class="btn" id="btn-join" data-ref="join-house-btn">Join house</button>
+    <div class="row" style="margin:16px 0 12px"><div style="flex:1;height:1px;background:var(--line)"></div><span class="sub">or</span><div style="flex:1;height:1px;background:var(--line)"></div></div>
+    <input class="field" id="new-house" placeholder="New house name — “Maple St”">
+    <button class="btn ghost" id="btn-create" data-ref="create-house-btn">Create a house</button>
+    <p class="sub" id="mine" style="margin-top:16px"></p>
+  </div>
+</section>
+
+<!-- ══════════════ APP ══════════════ -->
+<div id="app" class="hide">
+  <header class="topbar">
+    <div class="wrap">
+      <div class="logo"><span class="dot">🧺</span> HouseCart</div>
+      <div class="spacer"></div>
+      <button class="housepill" id="house-switch" data-ref="house-switcher"><span id="house-name">—</span><span class="code" id="house-code">—</span> ▾</button>
+      <div class="avatar" id="me-av" data-ref="me-avatar"></div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <!-- ── PANTRY ── -->
+    <section id="tab-pantry" data-ref="pantry-tab">
+      <div class="card">
+        <h2>Add groceries</h2>
+        <p class="sub">Scan a barcode and we'll pull the name, size and photo automatically.</p>
+        <div class="row" style="margin-top:11px">
+          <button class="btn" id="btn-scan" data-ref="scan-barcode-btn">📷 Scan barcode</button>
+          <button class="btn ghost" id="btn-manual" data-ref="add-manual-btn" style="width:auto;white-space:nowrap">✍️ Manual</button>
+        </div>
+        <div id="scanbox" class="hide" style="margin-top:11px">
+          <video id="video" playsinline muted></video>
+          <p class="sub" id="scanstatus" style="margin-top:7px">Point at the barcode…</p>
+          <button class="btn ghost sm" id="btn-scanstop" style="margin-top:6px">Stop</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="row"><h2 style="flex:1">House pantry</h2><span class="tag grey" id="pantry-count">0</span></div>
+        <div id="pantry-list"></div>
+      </div>
+    </section>
+
+    <!-- ── RECEIPT ── -->
+    <section id="tab-receipt" class="hide" data-ref="receipt-tab">
+      <div class="card" id="receipt-intro">
+        <h2>Scan a receipt</h2>
+        <p class="sub">We read the line items, then <b>you</b> choose which ones the house splits. Anything you don't tick stays 100% yours.</p>
+        <label class="btn" style="margin-top:11px" data-ref="scan-receipt-btn">📄 Photograph receipt
+          <input type="file" id="receipt-file" accept="image/*" capture="environment" class="hide"></label>
+        <button class="btn ghost" id="btn-demo" data-ref="demo-receipt-btn" style="margin-top:7px">Try it with a sample receipt</button>
+        <div id="ocr-prog" class="hide"><div class="progress"><i id="ocr-bar"></i></div><p class="sub" id="ocr-note" style="margin-top:6px">Reading receipt…</p></div>
+      </div>
+
+      <div id="receipt-edit" class="hide">
+        <div class="card">
+          <div class="row"><h2 style="flex:1">Which items does the house split?</h2><button class="btn ghost sm" id="btn-all">All</button><button class="btn ghost sm" id="btn-none">None</button></div>
+          <p class="sub" style="margin-bottom:4px">Tap an item to include it. Tap a name to fix the OCR. Tap a face to change who shares that item.</p>
+          <div id="lines" data-ref="receipt-lines"></div>
+        </div>
+        <div class="card" data-ref="split-summary">
+          <h2>The split</h2>
+          <div id="summary"></div>
+        </div>
+        <button class="btn" id="btn-settle" data-ref="settle-btn">Save & settle up →</button>
+        <div style="height:14px"></div>
+      </div>
+    </section>
+
+    <!-- ── SETTLE ── -->
+    <section id="tab-settle" class="hide" data-ref="settle-tab">
+      <div class="card">
+        <h2>Who owes you</h2>
+        <p class="sub">One tap sends them a Venmo request, pre-filled.</p>
+        <div id="owed"></div>
+      </div>
+      <div class="card">
+        <h2>Your Venmo handle</h2>
+        <p class="sub">So housemates can pay you back without asking.</p>
+        <div class="row"><input class="field" id="venmo-in" data-ref="venmo-handle-input" placeholder="@your-venmo" style="margin:6px 0"><button class="btn sm" id="btn-venmo-save">Save</button></div>
+        <div id="house-venmo" style="margin-top:10px"></div>
+      </div>
+    </section>
+
+    <!-- ── SPENDING ── -->
+    <section id="tab-spend" class="hide" data-ref="spending-tab">
+      <div class="stat" style="margin:12px 0">
+        <div><div class="n" id="s-house">$0</div><div class="l">House total</div></div>
+        <div><div class="n" id="s-me">$0</div><div class="l">Your share</div></div>
+        <div><div class="n" id="s-trips">0</div><div class="l">Trips</div></div>
+      </div>
+      <div class="card">
+        <h2>Who's been paying</h2>
+        <div id="spend-people" style="margin-top:8px"></div>
+      </div>
+      <div class="card">
+        <h2>Trip history</h2>
+        <div id="history"></div>
+      </div>
+    </section>
+  </main>
+
+  <nav class="tabbar">
+    <div class="wrap">
+      <button data-tab="pantry" class="on" data-ref="tab-pantry-btn"><svg viewBox="0 0 24 24"><path d="M3 6h18l-2 12H5L3 6zM3 6L2.4 3H1M8 10v5M16 10v5M12 10v5"/></svg>Pantry</button>
+      <button data-tab="receipt" data-ref="tab-receipt-btn"><svg viewBox="0 0 24 24"><path d="M5 3v18l2-1.5L9 21l2-1.5L13 21l2-1.5L17 21l2-1.5V3H5zM9 8h6M9 12h6M9 16h3"/></svg>Receipt</button>
+      <button data-tab="settle" data-ref="tab-settle-btn"><svg viewBox="0 0 24 24"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>Settle</button>
+      <button data-tab="spend" data-ref="tab-spend-btn"><svg viewBox="0 0 24 24"><path d="M3 3v18h18M7 15l4-5 3 3 5-7"/></svg>Spending</button>
+    </div>
+  </nav>
+</div>
+
+<div id="modal" class="modal hide"><div class="sheet" id="sheet"></div></div>
+<div id="toast" class="toast"></div>
+<canvas id="cv" class="hide"></canvas>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   CONFIG — Kaylee: paste your Cloud Console OAuth Web client ID
+   here and the real Google button replaces the demo picker.
+   ═══════════════════════════════════════════════════════════════ */
+const GOOGLE_CLIENT_ID = ""; // e.g. "1234-abc.apps.googleusercontent.com"
+
+/* ── tiny store ───────────────────────────────────────────────── */
+const DB = {
+  get(k, d){ try{ return JSON.parse(localStorage.getItem("hc:"+k)) ?? d }catch(e){ return d } },
+  set(k, v){ localStorage.setItem("hc:"+k, JSON.stringify(v)) }
+};
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const money = n => "$" + (Math.round(n*100)/100).toFixed(2);
+const initials = n => n.split(/\s+/).map(w=>w[0]).join("").slice(0,2).toUpperCase();
+function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("on"); clearTimeout(t._x); t._x=setTimeout(()=>t.classList.remove("on"),2200); }
+function sheet(html){ $("#sheet").innerHTML = html; $("#modal").classList.remove("hide"); }
+function closeSheet(){ $("#modal").classList.add("hide"); }
+$("#modal").onclick = e => { if(e.target.id==="modal") closeSheet(); };
+
+let me = DB.get("me", null);
+let houses = DB.get("houses", {});      // code -> {code,name,members:[{id,name,email,pic,venmo}],pantry:[],trips:[]}
+let cur = DB.get("cur", null);          // current house code
+const H = () => houses[cur];
+const save = () => { DB.set("houses", houses); DB.set("cur", cur); DB.set("me", me); };
+
+/* ═══════════ 1. SIGN IN ═══════════ */
+const DEMO_PEOPLE = [
+  {id:"u1", name:"Kaylee Renaud",  email:"kaylee@gmail.com",  venmo:"kaylee-r"},
+  {id:"u2", name:"Sam Okafor",     email:"sam@gmail.com",     venmo:"sam-okafor"},
+  {id:"u3", name:"Priya Raman",    email:"priya@gmail.com",   venmo:"priya-raman"},
+  {id:"u4", name:"Devon Lee",      email:"devon@gmail.com",   venmo:"devon-lee"}
+];
+
+function initAuth(){
+  if(GOOGLE_CLIENT_ID && window.google?.accounts?.id){
+    google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: res => {
+      const p = JSON.parse(atob(res.credential.split(".")[1]));
+      signIn({ id:p.sub, name:p.name, email:p.email, pic:p.picture, venmo:"" });
+    }});
+    google.accounts.id.renderButton($("#gsi-real"), {theme:"outline", size:"large", width:300});
+    $("#btn-google").classList.add("hide");
+    $("#gsi-note").textContent = "Signed in with your real Google account.";
+  } else {
+    $("#gsi-note").innerHTML = "Demo mode — real Google sign-in activates the moment a Cloud Console client ID is dropped into <code>GOOGLE_CLIENT_ID</code>.";
+  }
+}
+$("#btn-google").onclick = () => sheet(
+  `<h2>Choose a demo account</h2><p class="sub" style="margin-bottom:10px">Stands in for the Google account chooser.</p>` +
+  DEMO_PEOPLE.map(p=>`<div class="itemrow" onclick='signIn(${JSON.stringify(p)});closeSheet()' style="cursor:pointer">
+     <div class="avatar" style="width:38px;height:38px;font-size:14px">${initials(p.name)}</div>
+     <div style="flex:1"><div class="iname">${p.name}</div><div class="imeta">${p.email}</div></div></div>`).join("")
+);
+function signIn(p){ me = p; save(); route(); }
+
+/* ═══════════ 2. HOUSEHOLD ═══════════ */
+const CODE_WORDS = ["MAPLE","CEDAR","ORCHID","HARBOR","WILLOW","JUNIPER"];
+function newCode(){
+  let c; do { c = CODE_WORDS[Math.floor(Math.random()*CODE_WORDS.length)] + Math.floor(Math.random()*90+10); } while(houses[c]);
+  return c;
+}
+$("#btn-create").onclick = () => {
+  const name = $("#new-house").value.trim() || "My house";
+  const code = newCode();
+  houses[code] = { code, name, pantry:[], trips:[],
+    members:[{...me, venmo: me.venmo||""}] };
+  cur = code; save(); route();
+  toast("House created — code " + code);
+};
+$("#btn-join").onclick = () => {
+  const code = $("#join-code").value.trim().toUpperCase();
+  if(!houses[code]) return toast("No house with that code");
+  if(!houses[code].members.some(m=>m.id===me.id)) houses[code].members.push({...me, venmo:me.venmo||""});
+  cur = code; save(); route(); toast("Joined " + houses[code].name);
+};
+$("#house-switch").onclick = () => {
+  const mine = Object.values(houses).filter(h=>h.members.some(m=>m.id===me.id));
+  sheet(`<h2>Your households</h2><p class="sub" style="margin-bottom:8px">Spending is tracked separately for each.</p>` +
+    mine.map(h=>`<div class="itemrow" style="cursor:pointer" onclick="switchHouse('${h.code}')">
+      <div class="thumb" style="font-size:20px">🏠</div>
+      <div style="flex:1"><div class="iname">${h.name} ${h.code===cur?'<span class="tag">current</span>':''}</div>
+      <div class="imeta">${h.members.length} housemates · code <b>${h.code}</b> · ${h.trips.length} trips</div></div></div>`).join("") +
+    `<button class="btn ghost" style="margin-top:12px" onclick="closeSheet();leaveToGate()">+ Join or create another house</button>
+     <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px">
+       <h2 style="font-size:14px">Invite your housemates</h2>
+       <p class="sub">Send them this code — they pick “Join house” after signing in with Google.</p>
+       <div class="field" style="text-align:center;font-size:24px;font-weight:800;letter-spacing:.18em;color:var(--accent);font-family:ui-monospace,monospace">${cur}</div>
+     </div>`);
+};
+function switchHouse(c){ cur=c; save(); closeSheet(); render(); toast("Switched to "+houses[c].name); }
+function leaveToGate(){ cur=null; save(); route(); }
+
+/* ═══════════ 3. PANTRY — barcode + Open Food Facts ═══════════ */
+let stream=null, zx=null;
+$("#btn-scan").onclick = startScan;
+$("#btn-scanstop").onclick = stopScan;
+
+async function startScan(){
+  $("#scanbox").classList.remove("hide");
+  $("#scanstatus").textContent = "Starting camera…";
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}});
+    $("#video").srcObject = stream; await $("#video").play();
+    $("#scanstatus").textContent = "Point at the barcode…";
+    if("BarcodeDetector" in window){
+      const det = new BarcodeDetector({formats:["ean_13","ean_8","upc_a","upc_e","code_128"]});
+      const tick = async () => {
+        if(!stream) return;
+        try{ const c = await det.detect($("#video")); if(c.length) return onBarcode(c[0].rawValue); }catch(e){}
+        requestAnimationFrame(tick);
+      }; tick();
+    } else if(window.ZXing){
+      zx = new ZXing.BrowserMultiFormatReader();
+      zx.decodeFromVideoElement($("#video"), (r)=>{ if(r) onBarcode(r.getText()); });
+    } else { $("#scanstatus").textContent = "No barcode reader available — add manually."; }
+  }catch(e){
+    $("#scanstatus").innerHTML = "Camera unavailable here. <b>Type a barcode instead:</b>";
+    $("#scanbox").insertAdjacentHTML("beforeend",
+      `<div class="row"><input class="field" id="bc-manual" placeholder="e.g. 0049000042566"><button class="btn sm" onclick="onBarcode($('#bc-manual').value.trim())">Look up</button></div>`);
+  }
+}
+function stopScan(){
+  if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
+  if(zx){ try{zx.reset()}catch(e){} zx=null; }
+  $("#scanbox").classList.add("hide");
+}
+async function onBarcode(code){
+  if(!code) return;
+  stopScan(); toast("Barcode " + code);
+  let it = { id:crypto.randomUUID(), name:"Item "+code, brand:"", size:"", img:"", by:me.name, at:Date.now(), barcode:code };
+  try{
+    const r = await fetch(`https://world.openfoodfacts.org/api/v2/product/${code}.json?fields=product_name,brands,quantity,image_front_small_url`);
+    const j = await r.json();
+    if(j.status===1){
+      it.name  = j.product.product_name || it.name;
+      it.brand = j.product.brands || "";
+      it.size  = j.product.quantity || "";
+      it.img   = j.product.image_front_small_url || "";
+    } else toast("Not in the product database — name it yourself");
+  }catch(e){ toast("Lookup failed — offline?"); }
+  H().pantry.unshift(it); save(); render();
+}
+
+$("#btn-manual").onclick = () => sheet(`
+  <h2>Add an item</h2>
+  <input class="field" id="m-name" placeholder="Oat milk">
+  <div class="row"><input class="field" id="m-brand" placeholder="Brand (optional)"><input class="field" id="m-size" placeholder="Size"></div>
+  <label class="btn ghost" style="margin-top:4px">📸 Add a photo<input type="file" id="m-img" accept="image/*" capture="environment" class="hide"></label>
+  <img id="m-prev" class="hide" style="width:100%;max-height:170px;object-fit:cover;border-radius:11px;margin-top:8px">
+  <button class="btn" style="margin-top:10px" onclick="addManual()">Add to pantry</button>`);
+document.addEventListener("change", e => {
+  if(e.target.id==="m-img"){ const f=e.target.files[0]; if(!f) return;
+    const rd=new FileReader(); rd.onload=()=>{ $("#m-prev").src=rd.result; $("#m-prev").classList.remove("hide"); }; rd.readAsDataURL(f); }
+});
+function addManual(){
+  const n = $("#m-name").value.trim(); if(!n) return toast("Give it a name");
+  H().pantry.unshift({ id:crypto.randomUUID(), name:n, brand:$("#m-brand").value.trim(), size:$("#m-size").value.trim(),
+    img: $("#m-prev").classList.contains("hide") ? "" : $("#m-prev").src, by:me.name, at:Date.now() });
+  save(); closeSheet(); render(); toast("Added");
+}
+function delItem(id){ H().pantry = H().pantry.filter(i=>i.id!==id); save(); render(); }
+
+/* ═══════════ 4. RECEIPT — real OCR + parsing ═══════════ */
+let LINES = [], RCPT = {tax:0, total:0};
+
+$("#receipt-file").onchange = e => { const f=e.target.files[0]; if(f) runOCR(f); };
+$("#btn-demo").onclick = () => runOCR(sampleReceipt());
+
+function sampleReceipt(){   // real pixels -> real OCR, no external asset
+  const c = $("#cv"); c.width=520; c.height=660; const x = c.getContext("2d");
+  x.fillStyle="#fff"; x.fillRect(0,0,520,660); x.fillStyle="#000";
+  x.font="bold 26px monospace"; x.textAlign="center"; x.fillText("GREEN VALLEY MARKET", 260, 52);
+  x.font="16px monospace"; x.fillText("482 Maple St  (555) 019-2200", 260, 78);
+  x.textAlign="left"; x.font="19px monospace";
+  const rows=[["ORGANIC WHOLE MILK","4.99"],["SOURDOUGH LOAF","5.49"],["EGGS LARGE DOZ","6.29"],
+    ["CHICKEN THIGHS","11.84"],["BANANAS 2.1LB","1.68"],["OAT MILK BARISTA","5.99"],
+    ["PAPER TOWELS 6PK","12.99"],["DISH SOAP","3.79"],["COLD BREW 32OZ","7.49"],
+    ["ICE CREAM MINT","5.29"],["OLIVE OIL 500ML","14.99"],["TRASH BAGS 45CT","9.99"]];
+  let y=124; rows.forEach(([n,p])=>{ x.fillText(n,34,y); x.textAlign="right"; x.fillText(p,486,y); x.textAlign="left"; y+=32; });
+  y+=8; x.fillText("SUBTOTAL",34,y); x.textAlign="right"; x.fillText("90.82",486,y); x.textAlign="left"; y+=30;
+  x.fillText("TAX",34,y); x.textAlign="right"; x.fillText("5.45",486,y); x.textAlign="left"; y+=32;
+  x.font="bold 21px monospace"; x.fillText("TOTAL",34,y); x.textAlign="right"; x.fillText("96.27",486,y);
+  return c.toDataURL("image/png");
+}
+
+async function runOCR(src){
+  $("#ocr-prog").classList.remove("hide"); $("#ocr-bar").style.width="4%";
+  $("#ocr-note").textContent = "Reading the receipt…";
+  try{
+    const { data } = await Tesseract.recognize(src, "eng", {
+      logger: m => { if(m.status==="recognizing text"){ $("#ocr-bar").style.width = Math.round(m.progress*100)+"%"; } }
+    });
+    parseReceipt(data.text);
+  }catch(err){ $("#ocr-note").textContent = "OCR failed: " + err.message; return; }
+  $("#ocr-prog").classList.add("hide");
+  $("#receipt-intro").classList.add("hide");
+  $("#receipt-edit").classList.remove("hide");
+  renderLines();
+}
+
+const SKIP = /(sub\s*total|subtotal|total|tax|change|cash|credit|debit|balance|visa|mastercard|tend|auth|acct|approv|thank|store|market|st\b.*\d{3}|^\W*$)/i;
+function parseReceipt(text){
+  LINES = []; RCPT = {tax:0, total:0};
+  for(const raw of text.split("\n")){
+    const l = raw.trim(); if(l.length < 4) continue;
+    const m = l.match(/^(.*?)[\s.\-·]*(\d{1,3}[.,]\d{2})\s*[A-Z]?$/);
+    if(!m) continue;
+    const name  = m[1].replace(/[^A-Za-z0-9 %&'/.\-]/g," ").replace(/\s+/g," ").trim();
+    const price = parseFloat(m[2].replace(",","."));
+    if(!name || isNaN(price)) continue;
+    if(/^tax/i.test(name)) { RCPT.tax = price; continue; }
+    if(/total/i.test(name) && !/sub/i.test(name)) { RCPT.total = Math.max(RCPT.total, price); continue; }
+    if(SKIP.test(name)) continue;
+    if(name.replace(/[^A-Za-z]/g,"").length < 3) continue;
+    LINES.push({ id:crypto.randomUUID(), name, price, split:true, who: H().members.map(m=>m.id) });
+  }
+  if(!LINES.length) toast("Couldn't read any line items — try a flatter, brighter photo");
+}
+
+function renderLines(){
+  const mem = H().members;
+  $("#lines").innerHTML = LINES.map(l=>`
+    <div>
+      <div class="line ${l.split?'on':'off'}" data-id="${l.id}">
+        <div class="chk" onclick="toggleLine('${l.id}')">${l.split?'✓':''}</div>
+        <div class="lname"><input value="${l.name.replace(/"/g,'&quot;')}" oninput="renameLine('${l.id}',this.value)"></div>
+        <div class="lprice">${money(l.price)}</div>
+      </div>
+      ${l.split ? `<div class="who">${mem.map(m=>`<button class="${l.who.includes(m.id)?'on':''}" onclick="toggleWho('${l.id}','${m.id}')">${m.name.split(" ")[0]}</button>`).join("")}</div>`:""}
+    </div>`).join("");
+  renderSummary();
+}
+function toggleLine(id){ const l=LINES.find(x=>x.id===id); l.split=!l.split; if(l.split&&!l.who.length) l.who=H().members.map(m=>m.id); renderLines(); }
+function renameLine(id,v){ LINES.find(x=>x.id===id).name = v; renderSummary(); }
+function toggleWho(id,uid){
+  const l = LINES.find(x=>x.id===id);
+  l.who = l.who.includes(uid) ? l.who.filter(w=>w!==uid) : [...l.who,uid];
+  if(!l.who.length){ l.split=false; }
+  renderLines();
+}
+$("#btn-all").onclick  = () => { LINES.forEach(l=>{l.split=true; l.who=H().members.map(m=>m.id)}); renderLines(); };
+$("#btn-none").onclick = () => { LINES.forEach(l=>l.split=false); renderLines(); };
+
+/* split math: shared items divided among their sharers; tax allocated
+   proportionally to each person's share of the pre-tax subtotal */
+function computeSplit(){
+  const owed = {}; H().members.forEach(m=>owed[m.id]=0);
+  let shared=0, mine=0;
+  LINES.forEach(l=>{
+    if(l.split && l.who.length){ shared += l.price; const each = l.price/l.who.length; l.who.forEach(w=>owed[w]+=each); }
+    else mine += l.price;
+  });
+  const sub = shared + mine;
+  const tax = RCPT.tax || 0;
+  if(sub>0 && tax>0) Object.keys(owed).forEach(k => owed[k] += tax * (owed[k]/sub));
+  const taxMine = sub>0 ? tax*(mine/sub) : 0;
+  return { owed, shared, mine, tax, taxMine, grand: sub+tax };
+}
+function renderSummary(){
+  const s = computeSplit(), mem = H().members;
+  $("#summary").innerHTML =
+    mem.map(m=>`<div class="totrow"><span>${m.name}${m.id===me.id?' (you)':''}</span><b>${money(s.owed[m.id])}</b></div>`).join("") +
+    (s.mine>0?`<div class="totrow" style="color:var(--muted)"><span>Not split — yours alone</span><span>${money(s.mine+s.taxMine)}</span></div>`:"") +
+    (s.tax>0?`<div class="totrow" style="color:var(--muted)"><span>Tax (allocated proportionally)</span><span>${money(s.tax)}</span></div>`:"") +
+    `<div class="totrow big"><span>Receipt total</span><span>${money(s.grand)}</span></div>` +
+    (RCPT.total && Math.abs(RCPT.total-s.grand)>0.02
+      ? `<p class="sub" style="margin-top:7px;color:var(--warn)">⚠ Receipt says ${money(RCPT.total)} — ${money(Math.abs(RCPT.total-s.grand))} off. Check for a missed line.</p>`
+      : `<p class="sub" style="margin-top:7px">✓ Matches the printed total.</p>`);
+}
+$("#btn-settle").onclick = () => {
+  const s = computeSplit();
+  H().trips.unshift({ id:crypto.randomUUID(), at:Date.now(), payer:me.id, payerName:me.name,
+    items:LINES.map(({name,price,split,who})=>({name,price,split,who})),
+    owed:s.owed, total:s.grand, shared:s.shared });
+  save(); LINES=[]; RCPT={tax:0,total:0};
+  $("#receipt-edit").classList.add("hide"); $("#receipt-intro").classList.remove("hide");
+  go("settle"); toast("Trip saved");
+};
+
+/* ═══════════ 5. SETTLE — Venmo links ═══════════ */
+function venmoLink(handle, amount, note){
+  const h = (handle||"").replace(/^@/,"");
+  return `https://venmo.com/${encodeURIComponent(h)}?txn=charge&amount=${amount.toFixed(2)}&note=${encodeURIComponent(note)}`;
+}
+function netOwed(){
+  const net = {}; H().members.forEach(m=>{ if(m.id!==me.id) net[m.id]=0; });
+  H().trips.forEach(t=>{
+    if(t.settled) return;
+    if(t.payer===me.id){ Object.entries(t.owed).forEach(([u,v])=>{ if(u!==me.id) net[u]=(net[u]||0)+v; }); }
+    else if(t.owed[me.id]){ net[t.payer]=(net[t.payer]||0)-t.owed[me.id]; }
+  });
+  return net;
+}
+function renderSettle(){
+  const net = netOwed(), mem = H().members;
+  const rows = Object.entries(net).filter(([,v])=>Math.abs(v)>0.01);
+  $("#owed").innerHTML = rows.length ? rows.map(([uid,v])=>{
+    const m = mem.find(x=>x.id===uid) || {name:"Housemate", venmo:""};
+    const them = v>0;
+    return `<div class="itemrow">
+      <div class="avatar" style="width:40px;height:40px;font-size:14px;${them?'':'background:var(--muted)'}">${initials(m.name)}</div>
+      <div style="flex:1"><div class="iname">${m.name}</div>
+        <div class="imeta">${them?`owes you <b>${money(v)}</b>`:`you owe <b>${money(-v)}</b>`}${m.venmo?` · @${m.venmo.replace(/^@/,'')}`:' · no Venmo on file'}</div></div>
+      ${m.venmo ? `<a class="btn venmo sm" href="${venmoLink(m.venmo, Math.abs(v), them?`HouseCart: ${H().name} groceries`:`HouseCart: paying you back`)}" target="_blank" rel="noopener" data-ref="venmo-btn">${them?'Request':'Pay'}</a>`
+                : `<span class="tag grey">no venmo</span>`}
+    </div>`;
+  }).join("") + `<button class="btn ghost" style="margin-top:12px" onclick="markSettled()">Mark everything settled</button>`
+   : `<div class="empty"><span class="big">🤝</span>All square. Nobody owes anybody.</div>`;
+
+  $("#venmo-in").value = (mem.find(m=>m.id===me.id)?.venmo) || "";
+  $("#house-venmo").innerHTML = mem.map(m=>`<div class="totrow"><span>${m.name}</span><span class="sub">${m.venmo?'@'+m.venmo.replace(/^@/,''):'— not linked'}</span></div>`).join("");
+}
+$("#btn-venmo-save").onclick = () => {
+  const v = $("#venmo-in").value.trim();
+  H().members.find(m=>m.id===me.id).venmo = v; me.venmo = v; save(); renderSettle(); toast("Venmo linked");
+};
+function markSettled(){ H().trips.forEach(t=>t.settled=true); save(); render(); toast("Settled up"); }
+
+/* ═══════════ 6. SPENDING ═══════════ */
+function renderSpend(){
+  const trips = H().trips, mem = H().members;
+  const houseTotal = trips.reduce((a,t)=>a+t.total,0);
+  const myShare = trips.reduce((a,t)=>a+(t.owed[me.id]||0),0);
+  $("#s-house").textContent = money(houseTotal).replace(/\.\d\d$/,"");
+  $("#s-me").textContent    = money(myShare).replace(/\.\d\d$/,"");
+  $("#s-trips").textContent = trips.length;
+
+  const paid = {}, share = {};
+  mem.forEach(m=>{paid[m.id]=0; share[m.id]=0});
+  trips.forEach(t=>{ paid[t.payer]=(paid[t.payer]||0)+t.total; Object.entries(t.owed).forEach(([u,v])=>share[u]=(share[u]||0)+v); });
+  const max = Math.max(1, ...Object.values(paid));
+  $("#spend-people").innerHTML = mem.map(m=>`
+    <div style="margin-bottom:11px">
+      <div class="totrow" style="padding:0"><span>${m.name}${m.id===me.id?' (you)':''}</span>
+        <span><b>${money(paid[m.id]||0)}</b> <span class="sub">paid · ${money(share[m.id]||0)} owed</span></span></div>
+      <div class="bar"><i style="width:${(paid[m.id]||0)/max*100}%"></i></div>
+    </div>`).join("");
+
+  $("#history").innerHTML = trips.length ? trips.map(t=>`
+    <div class="itemrow" style="cursor:pointer" onclick="tripDetail('${t.id}')">
+      <div class="thumb">🧾</div>
+      <div style="flex:1"><div class="iname">${new Date(t.at).toLocaleDateString(undefined,{month:"short",day:"numeric"})} · ${t.items.length} items</div>
+        <div class="imeta">${t.payerName} paid · ${money(t.shared)} shared ${t.settled?'· <span style="color:var(--accent)">settled</span>':''}</div></div>
+      <div class="lprice">${money(t.total)}</div>
+    </div>`).join("") : `<div class="empty"><span class="big">🧾</span>No trips yet. Scan a receipt to start tracking.</div>`;
+}
+function tripDetail(id){
+  const t = H().trips.find(x=>x.id===id), mem=H().members;
+  sheet(`<h2>${new Date(t.at).toLocaleString(undefined,{dateStyle:"medium"})}</h2>
+    <p class="sub" style="margin-bottom:10px">${t.payerName} paid ${money(t.total)}</p>
+    ${t.items.map(i=>`<div class="totrow"><span>${i.split?'':'<span class="sub">(not split) </span>'}${i.name}</span><span>${money(i.price)}</span></div>`).join("")}
+    <div style="border-top:1px solid var(--line);margin:10px 0;padding-top:10px">
+    ${Object.entries(t.owed).map(([u,v])=>`<div class="totrow"><span>${(mem.find(m=>m.id===u)||{name:"?"}).name}</span><b>${money(v)}</b></div>`).join("")}</div>`);
+}
+
+/* ═══════════ ROUTING / RENDER ═══════════ */
+function go(tab){
+  $$(".tabbar button").forEach(b=>b.classList.toggle("on", b.dataset.tab===tab));
+  ["pantry","receipt","settle","spend"].forEach(t=>$("#tab-"+t).classList.toggle("hide", t!==tab));
+  render();
+}
+$$(".tabbar button").forEach(b=>b.onclick=()=>go(b.dataset.tab));
+
+function render(){
+  if(!me || !cur || !H()) return;
+  $("#house-name").textContent = H().name;
+  $("#house-code").textContent = H().code;
+  $("#me-av").innerHTML = me.pic ? `<img src="${me.pic}">` : initials(me.name);
+  const p = H().pantry;
+  $("#pantry-count").textContent = p.length + (p.length===1?" item":" items");
+  $("#pantry-list").innerHTML = p.length ? p.map(i=>`
+    <div class="itemrow">
+      ${i.img?`<img class="thumb" src="${i.img}" alt="">`:`<div class="thumb">🥫</div>`}
+      <div style="flex:1;min-width:0"><div class="iname">${i.name}</div>
+        <div class="imeta">${[i.brand,i.size].filter(Boolean).join(" · ")||"added manually"} · by ${i.by.split(" ")[0]}</div></div>
+      <button class="x" onclick="delItem('${i.id}')">×</button>
+    </div>`).join("") : `<div class="empty"><span class="big">🥑</span>Nothing in the pantry yet.<br>Scan a barcode to pull in the photo automatically.</div>`;
+  renderSettle(); renderSpend();
+}
+function route(){
+  const signed = !!me, housed = signed && cur && houses[cur];
+  $("#signin").classList.toggle("hide", signed);
+  $("#housegate").classList.toggle("hide", !signed || !!housed);
+  $("#app").classList.toggle("hide", !housed);
+  if(signed && !housed){
+    const mine = Object.values(houses).filter(h=>h.members.some(m=>m.id===me.id));
+    $("#mine").innerHTML = mine.length ? "Your houses: " + mine.map(h=>`<a href="#" onclick="switchHouse('${h.code}');route();return false"><b>${h.name}</b> (${h.code})</a>`).join(", ") : "";
+  }
+  if(housed) render();
+}
+window.onload = initAuth;
+route();
+
+/* expose for inline handlers */
+Object.assign(window,{signIn,closeSheet,addManual,delItem,toggleLine,toggleWho,renameLine,switchHouse,leaveToGate,markSettled,tripDetail,onBarcode,$});
+</script>
+</body>
+</html>
