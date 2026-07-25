@@ -19,7 +19,7 @@ await p.evaluate(()=>{
   [['Organic Spinach','produce'],['Whole Milk','dairy'],['Chicken Thighs','meat'],
    ['Ben & Jerry frozen yogurt','frozen'],['Paper Towels','household'],['Cold Brew Coffee','drinks'],
    ['Sourdough Bread','pantry'],['Weird Gadget','other']].forEach(([n])=>{
-    H().pantry.push({id:'i'+n.replace(/\W/g,''),name:n,brand:'',size:'',img:'',by:'Kaylee',at:Date.now(),stock:'plenty',cat:guessCat(n)});
+    H().pantry.push({id:'i'+n.replace(/\W/g,''),name:n,brand:'',size:'',img:'',by:'Kaylee',at:Date.now(),stock:'full',cat:guessCat(n)});
   }); save(); render();
 });
 const cats = await p.evaluate(()=>H().pantry.map(i=>[i.name,i.cat]));
@@ -34,12 +34,12 @@ ok((await p.textContent('#cnt-have'))==='8','Have count starts at 8');
 ok((await p.textContent('#cnt-need'))==='0','Need list starts empty');
 const id = await p.evaluate(()=>H().pantry[0].id);
 await p.click(`[data-item="${id}"] .jarbtn`); await p.waitForTimeout(250);
-ok(await p.evaluate(i=>H().pantry.find(x=>x.id===i).stock==='low',id),'one tap: plenty -> running low');
-ok((await p.textContent('#cnt-need'))==='1','running-low item appears on the Need list');
+ok(await p.evaluate(i=>H().pantry.find(x=>x.id===i).stock==='half',id),'one tap: full -> half');
+ok((await p.textContent('#cnt-need'))==='1','half-full item appears on the Need list');
 ok((await p.textContent('#cnt-have'))==='8','...and is still counted as in the house');
 await p.click(`[data-item="${id}"] .jarbtn`); await p.waitForTimeout(250);
-ok(await p.evaluate(i=>H().pantry.find(x=>x.id===i).stock==='out',id),'second tap: low -> out');
-ok((await p.textContent('#cnt-have'))==='7','an OUT item drops off the Have list');
+ok(await p.evaluate(i=>H().pantry.find(x=>x.id===i).stock==='empty',id),'second tap: half -> empty');
+ok((await p.textContent('#cnt-have'))==='8','the pantry list keeps showing an empty item (so you can tap it back to full)');
 await p.screenshot({path:'/tmp/f-have.png',fullPage:true});
 
 console.log('\n=== PANTRY: the Need list restock ===');
@@ -47,7 +47,7 @@ await p.click('[data-ref="need-tab"]'); await p.waitForTimeout(300);
 ok((await p.$$('.cathead')).length>0,'Need list groups items under category headers');
 await p.screenshot({path:'/tmp/f-need.png',fullPage:true});
 await p.click(`[data-item="${id}"] .chk`); await p.waitForTimeout(700);
-ok(await p.evaluate(i=>H().pantry.find(x=>x.id===i).stock==='plenty',id),'ticking it off refills to plenty');
+ok(await p.evaluate(i=>H().pantry.find(x=>x.id===i).stock==='full',id),'ticking it off refills to full');
 ok((await p.textContent('#cnt-need'))==='0','...and it leaves the Need list');
 
 console.log('\n=== RECEIPT: percentage split ===');

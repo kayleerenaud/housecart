@@ -64,6 +64,72 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em}
 #signin,#housegate,#waiting{height:100dvh;overflow-y:auto;overscroll-behavior:contain}
 .wrap{max-width:520px;margin:0 auto;padding:0 var(--inset)}
 
+
+/* ══ Vibe profiles ══ Each is a full token set; a person picks one on their
+   Account page and it's remembered on their device. "crisp" is the default and
+   follows the system light/dark setting. */
+html[data-vibe="market"]{
+  --bg:#F4F1EA; --surface:#FFFDF8; --surface-2:rgba(140,125,100,.14);
+  --material:rgba(250,247,240,.86);
+  --label:#241F17; --label-2:rgba(70,60,45,.66); --label-3:rgba(70,60,45,.34);
+  --separator:rgba(120,105,80,.28);
+  --tint:#2F7D55; --tint-soft:rgba(47,125,85,.13); --on-tint:#fff;
+  --positive:#2F7D55; --negative:#A8412A; --warning:#B06A1F;
+}
+html[data-vibe="midnight"]{
+  --bg:#0B0D12; --surface:#161A22; --surface-2:rgba(140,155,190,.16);
+  --material:rgba(16,19,26,.82);
+  --label:#EEF1F7; --label-2:rgba(210,220,240,.62); --label-3:rgba(210,220,240,.32);
+  --separator:rgba(150,165,200,.24);
+  --tint:#7C8CFF; --tint-soft:rgba(124,140,255,.18); --on-tint:#0B0D12;
+  --positive:#5BD6A0; --negative:#FF6B7A; --warning:#F2B44C;
+  --shadow-sheet:0 -8px 40px rgba(0,0,0,.65);
+}
+html[data-vibe="sorbet"]{
+  --bg:#FDF2F4; --surface:#FFFFFF; --surface-2:rgba(190,120,140,.13);
+  --material:rgba(255,246,248,.85);
+  --label:#2C1E24; --label-2:rgba(90,60,72,.64); --label-3:rgba(90,60,72,.32);
+  --separator:rgba(160,110,130,.26);
+  --tint:#C2417A; --tint-soft:rgba(194,65,122,.12); --on-tint:#fff;
+  --positive:#2E9E77; --negative:#C2417A; --warning:#C97B1E;
+}
+html[data-vibe="mono"]{
+  --bg:#EDEDED; --surface:#FFFFFF; --surface-2:rgba(0,0,0,.07);
+  --material:rgba(248,248,248,.86);
+  --label:#000; --label-2:rgba(0,0,0,.56); --label-3:rgba(0,0,0,.3);
+  --separator:rgba(0,0,0,.2);
+  --tint:#111; --tint-soft:rgba(0,0,0,.08); --on-tint:#fff;
+  --positive:#111; --negative:#8A0F1A; --warning:#7A4A00;
+}
+html[data-vibe="forest"]{
+  --bg:#0F1511; --surface:#18211B; --surface-2:rgba(150,190,160,.15);
+  --material:rgba(15,21,17,.84);
+  --label:#EAF2EC; --label-2:rgba(210,230,215,.62); --label-3:rgba(210,230,215,.3);
+  --separator:rgba(150,190,160,.22);
+  --tint:#7BD88F; --tint-soft:rgba(123,216,143,.16); --on-tint:#0F1511;
+  --positive:#7BD88F; --negative:#FF8080; --warning:#E8B667;
+  --shadow-sheet:0 -8px 40px rgba(0,0,0,.6);
+}
+
+/* ── swipe-to-delete ── */
+.swipe{position:relative;overflow:hidden}
+.swipe .sw-inner{position:relative;background:var(--surface);transition:transform .22s cubic-bezier(.32,.72,0,1);will-change:transform;z-index:1}
+.swipe.open .sw-inner{transform:translateX(-84px)}
+.swipe .sw-del{position:absolute;top:0;right:0;bottom:0;width:84px;background:var(--negative);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600;letter-spacing:-.2px;border-radius:0}
+.swipe .sw-inner .itemrow::after{right:0}
+
+/* ── account screen ── */
+.vibegrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px;padding:4px 0 2px}
+.vibecard{border-radius:12px;padding:10px;text-align:left;border:1.5px solid var(--separator);position:relative;min-height:74px}
+.vibecard.on{border-color:var(--tint);box-shadow:0 0 0 2px var(--tint-soft)}
+.vibecard .swatch{display:flex;gap:4px;margin-bottom:8px}
+.vibecard .swatch i{width:14px;height:14px;border-radius:4px;display:block}
+.vibecard .nm{font-size:13px;font-weight:600;letter-spacing:-.1px}
+.pickpic{position:relative;width:76px;height:76px;border-radius:50%;overflow:hidden;background:var(--tint);
+  color:var(--on-tint);display:grid;place-items:center;font-size:28px;font-weight:600;margin:0 auto}
+.pickpic img{width:100%;height:100%;object-fit:cover}
+
 /* ---------- nav ---------- */
 .topbar{flex:0 0 auto;position:relative;z-index:40;background:var(--material);backdrop-filter:blur(20px) saturate(1.8);border-bottom:.5px solid var(--separator)}
 .topbar .wrap{display:flex;align-items:center;gap:10px;height:44px}
@@ -140,9 +206,10 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em}
 .jarbtn{width:44px;height:44px;display:grid;place-items:center;flex:0 0 auto;margin-right:-10px}
 .jar{width:22px;height:26px;border:1.7px solid var(--label-3);border-radius:4px 4px 7px 7px;position:relative;overflow:hidden}
 .jar i{position:absolute;left:0;right:0;bottom:0;display:block;transition:height .35s cubic-bezier(.34,1.3,.64,1),background .2s}
-.jar.plenty i{height:80%;background:var(--tint)}
-.jar.low i{height:28%;background:var(--warning)}
-.jar.out i{height:0}
+.jar.full i{height:82%;background:var(--tint)}
+.jar.half i{height:47%;background:var(--warning)}
+.jar.empty i{height:0}
+.jar.empty{border-style:dashed}
 .stock-low{color:var(--warning)}
 .stock-out{color:var(--label-2)}
 
@@ -290,7 +357,7 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
       </div>
       <div class="card">
         <div class="segpill" data-ref="pantry-segments">
-          <button data-view="have" class="on" data-ref="have-tab">Have · <span class="cnt" id="cnt-have">0</span></button>
+          <button data-view="have" class="on" data-ref="have-tab">Pantry · <span class="cnt" id="cnt-have">0</span></button>
           <button data-view="need" data-ref="need-tab">Need · <span class="cnt need" id="cnt-need">0</span></button>
         </div>
         <p class="sub" id="pantry-hint" style="margin-top:9px;font-size:11.5px"></p>
@@ -365,6 +432,44 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
         </div>
         <div id="house-venmo" style="margin-top:12px"></div>
       </div>
+    </section>
+
+    <!-- ── ACCOUNT ── -->
+    <section id="tab-account" class="hide" data-ref="account-tab">
+      <div class="card pad" style="text-align:center">
+        <button class="pickpic" id="pp" data-ref="profile-pic" aria-label="Change profile picture"></button>
+        <div class="row" style="justify-content:center;margin-top:14px;gap:8px">
+          <label class="btn ghost sm" data-ref="pic-upload" style="white-space:nowrap">Upload
+            <input type="file" id="pic-file" accept="image/*" class="hide"></label>
+          <button class="btn ghost sm" id="pic-google" style="white-space:nowrap">Google</button>
+          <button class="btn plain" id="pic-clear" style="width:auto;white-space:nowrap">Remove</button>
+        </div>
+        <div id="acct-name" style="font-size:22px;font-weight:700;letter-spacing:-.3px;margin-top:14px"></div>
+        <div class="sub" id="acct-email"></div>
+      </div>
+
+      <div class="sechead">Venmo</div>
+      <div class="card pad">
+        <div class="row"><input class="field" id="acct-venmo" data-ref="account-venmo-input" placeholder="@your-venmo" style="margin:0">
+          <button class="btn sm" id="acct-save">Save</button></div>
+      </div>
+      <div class="secfoot">Just the handle. We only ever use it to build a payment link.</div>
+
+      <div class="sechead">Vibe</div>
+      <div class="card pad"><div class="vibegrid" id="vibes" data-ref="vibe-picker"></div></div>
+      <div class="secfoot">Your own look — housemates keep whatever they picked.</div>
+
+      <div class="sechead">Household</div>
+      <div class="card">
+        <div class="itemrow" style="cursor:pointer" onclick="$('#house-switch').click()">
+          <div class="thumb"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7M5 10v10h14V10"/></svg></div>
+          <div style="flex:1;min-width:0"><div class="iname" id="acct-house">—</div><div class="imeta" id="acct-house-sub">—</div></div>
+          <svg class="chev" viewBox="0 0 8 14" aria-hidden="true"><path d="M1 1l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </div>
+      </div>
+
+      <button class="btn ghost" style="color:var(--negative);background:transparent" onclick="confirmSignOut()">Sign out</button>
+      <div style="height:20px"></div>
     </section>
 
     <!-- ── SPENDING ── -->
@@ -479,7 +584,7 @@ async function onCredential(res){
   try { p = jwtPayload(res.credential); }
   catch(e){ $("#gsi-note").textContent = "Couldn't read that Google response — try again."; return; }
   const local = { id:p.sub, name:p.name || p.given_name || p.email, email:p.email,
-                  pic:p.picture || "", venmo:"" };
+                  pic:p.picture || "", googlePic:p.picture || "", venmo:"" };
   if(CLOUD()){
     $("#gsi-note").textContent = "Signing you in…";
     try {
@@ -541,7 +646,7 @@ function initAuth(){
   }
 }
 function signIn(p){
-  me = p; save();
+  me = p; save(); applyVibe(currentVibe());
   if(CLOUD()){
     houses = {};
     let landed = false;
@@ -578,7 +683,9 @@ function migrateHouses(){
     if(!h.pending){ h.pending = []; changed = true; }
     if(!h.payments){ h.payments = []; changed = true; }
     (h.pantry||[]).forEach(i => {
-      if(!i.stock){ i.stock = "plenty"; changed = true; }
+      if(!i.stock){ i.stock = "full"; changed = true; }
+      const LEGACY = { plenty:"full", low:"half", out:"empty" };   // pre-rename values
+      if(LEGACY[i.stock]){ i.stock = LEGACY[i.stock]; changed = true; }
       if(!i.cat){ i.cat = guessCat([i.name,i.brand].join(" ")); changed = true; }
     });
     if(!h.adminId && h.members?.length){ h.adminId = h.members[0].id; changed = true; }
@@ -786,14 +893,16 @@ function guessCat(text){
   return "other";
 }
 
-const STOCK_NEXT  = { plenty:"low", low:"out", out:"plenty" };
-const STOCK_LABEL = { plenty:"", low:"running low", out:"out" };
+/* full -> half -> empty -> full. "half" replaces the old "running low" and
+   "empty" the old "out"; migrateHouses maps the legacy values across. */
+const STOCK_NEXT  = { full:"half", half:"empty", empty:"full" };
+const STOCK_LABEL = { full:"full", half:"half", empty:"empty" };
 
 async function cycleStock(id){
   const it = H().pantry.find(i=>i.id===id); if(!it) return;
-  it.stock = STOCK_NEXT[it.stock || "plenty"];
+  it.stock = STOCK_NEXT[it.stock] || "full";
   save(); render();
-  if(it.stock === "out") toast("On the list.");
+  if(it.stock === "empty") toast("On the list.");
   await cloud("putPantry", cur, it);
 }
 
@@ -802,25 +911,69 @@ function restock(id){
   const it = H().pantry.find(i=>i.id===id); if(!it) return;
   const row = document.querySelector(`[data-item="${id}"]`);
   const jar = row?.querySelector(".jar");
-  if(jar){ jar.className = "jar plenty"; row.classList.add("restocking"); }
-  it.stock = "plenty"; save();
+  if(jar){ jar.className = "jar full"; row.classList.add("restocking"); }
+  it.stock = "full"; save();
   cloud("putPantry", cur, it);
   setTimeout(()=>{ render(); toast("Back on the shelf."); }, 420);
 }
 
+/* Swipe-to-delete. Pointer events so it works with a finger and a trackpad;
+   a horizontal drag past 1.4x the vertical one takes over, otherwise the list
+   keeps scrolling as normal. */
+let swOpen = null;
+function closeSwipe(){ if(swOpen){ swOpen.classList.remove("open"); swOpen = null; } }
+function swipeDelete(id){
+  const it = H().pantry.find(x=>x.id===id);
+  closeSwipe();
+  if(!it) return;
+  if(!confirm(`Remove "${it.name}" from the house pantry?`)) return;
+  delItem(id);
+}
+function bindSwipe(root){
+  root.querySelectorAll("[data-swipe]").forEach(el => {
+    const inner = el.querySelector(".sw-inner");
+    let x0=0, y0=0, dx=0, active=false, decided=false;
+    el.addEventListener("pointerdown", e => {
+      if(e.pointerType === "mouse" && e.button !== 0) return;
+      x0 = e.clientX; y0 = e.clientY; dx = 0; active = true; decided = false;
+      if(swOpen && swOpen !== el) closeSwipe();
+    });
+    el.addEventListener("pointermove", e => {
+      if(!active) return;
+      const ax = e.clientX - x0, ay = e.clientY - y0;
+      if(!decided){
+        if(Math.abs(ax) < 6 && Math.abs(ay) < 6) return;
+        if(Math.abs(ax) < Math.abs(ay) * 1.4){ active = false; return; }  // vertical: let it scroll
+        decided = true; inner.style.transition = "none";
+      }
+      dx = Math.max(-110, Math.min(0, ax));
+      inner.style.transform = `translateX(${dx}px)`;
+    });
+    const end = () => {
+      if(!active) return; active = false;
+      inner.style.transition = ""; inner.style.transform = "";
+      if(decided && dx < -46){ el.classList.add("open"); swOpen = el; }
+      else el.classList.remove("open");
+    };
+    el.addEventListener("pointerup", end);
+    el.addEventListener("pointercancel", end);
+    el.addEventListener("pointerleave", e => { if(active && e.pointerType === "mouse") end(); });
+  });
+}
+
 let PANTRY_VIEW = "have";
 $$('[data-ref="pantry-segments"] button').forEach(b => b.onclick = () => {
-  PANTRY_VIEW = b.dataset.view;
+  closeSwipe(); PANTRY_VIEW = b.dataset.view;
   $$('[data-ref="pantry-segments"] button').forEach(x=>x.classList.toggle("on", x===b));
   render();
 });
 
 function itemRow(i, mode){
   const cat = CATS[i.cat || "other"] || CATS.other;
-  const st  = i.stock || "plenty";
+  const st  = i.stock || "full";
   const meta = [i.brand, i.size].filter(Boolean).join(" · ");
-  const stateTxt = st === "low" ? `<span class="stock-low">running low</span>`
-                 : st === "out" ? `<span class="stock-out">out</span>` : "";
+  const stateTxt = st === "half"  ? `<span class="stock-low">half left</span>`
+                 : st === "empty" ? `<span class="stock-out">empty</span>` : "";
   // on the Need list the category header is already overhead, so don't repeat it
   const fallback = mode === "need" ? "" : cat.name;
   const metaLine = [meta || fallback, stateTxt].filter(Boolean).join(" · ") || "&nbsp;";
@@ -829,14 +982,19 @@ function itemRow(i, mode){
     : `<div class="thumb">${svg(i.cat||"other")}</div>`;
   const control = mode === "need"
     ? `<button class="chk" style="background:#fff;border-color:var(--separator)" onclick="restock('${i.id}')" aria-label="Got it — back on the shelf"></button>`
-    : `<button class="jarbtn" onclick="cycleStock('${i.id}')" aria-label="${esc(i.name)}: ${STOCK_LABEL[st]||'plenty'}. Tap to change.">
+    : `<button class="jarbtn" onclick="cycleStock('${i.id}')" aria-label="${esc(i.name)}: ${STOCK_LABEL[st]||'full'}. Tap to change.">
          <span class="jar ${st}"><i></i></span></button>`;
-  return `<div class="itemrow" data-item="${i.id}">
-    ${mode === "need" ? control : ""}
-    ${thumb}
-    <div style="flex:1;min-width:0;cursor:pointer" onclick="itemSheet('${i.id}')">
-      <div class="iname">${esc(i.name)}</div><div class="imeta">${metaLine}</div></div>
-    ${mode === "need" ? "" : control}
+  return `<div class="swipe" data-swipe="${i.id}">
+    <button class="sw-del" onclick="swipeDelete('${i.id}')" tabindex="-1">Delete</button>
+    <div class="sw-inner">
+      <div class="itemrow" data-item="${i.id}">
+        ${mode === "need" ? control : ""}
+        ${thumb}
+        <div style="flex:1;min-width:0;cursor:pointer" onclick="itemSheet('${i.id}')">
+          <div class="iname">${esc(i.name)}</div><div class="imeta">${metaLine}</div></div>
+        ${mode === "need" ? "" : control}
+      </div>
+    </div>
   </div>`;
 }
 
@@ -851,11 +1009,11 @@ function itemSheet(id){
     </div>
     <p class="sub" style="margin:12px 0 5px">How much is left?</p>
     <div class="seg">
-      ${["plenty","low","out"].map(s=>`<button class="st-pick ${ (i.stock||'plenty')===s ? 'on':''}" data-s="${s}">${s==="plenty"?"Plenty":s==="low"?"Running low":"Out"}</button>`).join("")}
+      ${["full","half","empty"].map(s=>`<button class="st-pick ${ (i.stock||'full')===s ? 'on':''}" data-s="${s}">${s[0].toUpperCase()+s.slice(1)}</button>`).join("")}
     </div>
     <button class="btn" style="margin-top:14px" id="ed-save">Save</button>
     <button class="btn ghost" style="margin-top:7px;color:var(--warning)" id="ed-del">Remove from pantry</button>`);
-  let cat = i.cat || "other", stock = i.stock || "plenty";
+  let cat = i.cat || "other", stock = i.stock || "full";
   $$("#sheet .cat-pick").forEach(b=>b.onclick=()=>{ cat=b.dataset.k;
     $$("#sheet .cat-pick").forEach(x=>{ const on=x.dataset.k===cat;
       x.style.borderColor = on?"var(--tint)":"var(--separator)";
@@ -920,7 +1078,7 @@ function stopScan(){
 async function onBarcode(code){
   if(!code) return;
   stopScan(); toast("Barcode " + code);
-  let it = { id:crypto.randomUUID(), name:"Item "+code, brand:"", size:"", img:"", by:me.name, at:Date.now(), barcode:code, stock:"plenty", cat:"other" };
+  let it = { id:crypto.randomUUID(), name:"Item "+code, brand:"", size:"", img:"", by:me.name, at:Date.now(), barcode:code, stock:"full", cat:"other" };
   try{
     const r = await fetch(`https://world.openfoodfacts.org/api/v2/product/${code}.json?fields=product_name,brands,quantity,image_front_small_url`);
     const j = await r.json();
@@ -951,7 +1109,7 @@ async function addManual(){
   const n = $("#m-name").value.trim(); if(!n) return toast("Give it a name");
   const it = { id:crypto.randomUUID(), name:n, brand:$("#m-brand").value.trim(), size:$("#m-size").value.trim(),
     img: $("#m-prev").classList.contains("hide") ? "" : $("#m-prev").src, by:me.name, at:Date.now(),
-    stock:"plenty", cat:guessCat(n + " " + $("#m-brand").value) };
+    stock:"full", cat:guessCat(n + " " + $("#m-brand").value) };
   H().pantry.unshift(it);
   save(); closeSheet(); render(); toast("Added");
   await cloud("putPantry", cur, it);
@@ -1297,11 +1455,98 @@ function recordPayment(uid, amount, theyPaidMe){
   cloud("putPayment", cur, p);
 }
 
-$("#btn-nudge-venmo").onclick = () => accountSheet(true);
+$("#btn-nudge-venmo").onclick = () => { go("account"); setTimeout(()=>$("#acct-venmo")?.focus(), 80); };
+
+const VIBES = [
+  {id:"crisp",    name:"Crisp",    sw:["#F2F2F7","#FFFFFF","#0F7B41"]},
+  {id:"market",   name:"Market",   sw:["#F4F1EA","#FFFDF8","#2F7D55"]},
+  {id:"midnight", name:"Midnight", sw:["#0B0D12","#161A22","#7C8CFF"]},
+  {id:"forest",   name:"Forest",   sw:["#0F1511","#18211B","#7BD88F"]},
+  {id:"sorbet",   name:"Sorbet",   sw:["#FDF2F4","#FFFFFF","#C2417A"]},
+  {id:"mono",     name:"Mono",     sw:["#EDEDED","#FFFFFF","#111111"]}
+];
+/* A vibe is a personal display choice, so it lives on the device rather than
+   in the shared house — your housemates keep whatever they picked. */
+function vibeKey(){ return "vibe:" + (me ? me.id : "anon"); }
+function applyVibe(v){
+  if(v && v !== "crisp") document.documentElement.setAttribute("data-vibe", v);
+  else document.documentElement.removeAttribute("data-vibe");
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if(meta) setTimeout(()=>{ meta.content = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim() || "#F2F2F7"; }, 30);
+}
+function setVibe(v){ DB.set(vibeKey(), v); applyVibe(v); renderAccount(); toast(`${(VIBES.find(x=>x.id===v)||{}).name} it is`); }
+function currentVibe(){ return DB.get(vibeKey(), "crisp"); }
+
+/* Shrink to a 192px square JPEG before storing — a profile picture should cost
+   a few kilobytes, not sit in the house document at full camera resolution. */
+function shrinkImage(file, px = 192){
+  return new Promise((res, rej) => {
+    const rd = new FileReader();
+    rd.onerror = rej;
+    rd.onload = () => {
+      const img = new Image();
+      img.onerror = rej;
+      img.onload = () => {
+        const side = Math.min(img.width, img.height);
+        const c = document.createElement("canvas"); c.width = c.height = px;
+        const x = c.getContext("2d");
+        x.drawImage(img, (img.width-side)/2, (img.height-side)/2, side, side, 0, 0, px, px);
+        res(c.toDataURL("image/jpeg", 0.82));
+      };
+      img.src = rd.result;
+    };
+    rd.readAsDataURL(file);
+  });
+}
+async function setPic(dataUrl){
+  me.pic = dataUrl || "";
+  const m = H() && H().members.find(x=>x.id===me.id); if(m) m.pic = me.pic;
+  save(); renderAccount(); render();
+  if(H()) await cloud("setMembers", cur, H().members);
+  toast(dataUrl ? "Picture updated" : "Picture removed");
+}
+
+function renderAccount(){
+  if(!me) return;
+  $("#pp").innerHTML = me.pic ? `<img src="${esc(me.pic)}" alt="">` : esc(initials(me.name));
+  $("#acct-name").textContent  = me.name || "";
+  $("#acct-email").textContent = me.email || "";
+  const mine = (H() && H().members.find(m=>m.id===me.id)) || me;
+  $("#acct-venmo").value = mine.venmo || "";
+  if(H()){
+    $("#acct-house").textContent = H().name;
+    $("#acct-house-sub").textContent = `${H().members.length} housemate${H().members.length===1?"":"s"} · code ${H().code}`;
+  }
+  const cv = currentVibe();
+  $("#vibes").innerHTML = VIBES.map(v=>`
+    <button class="vibecard ${v.id===cv?'on':''}" onclick="setVibe('${v.id}')" data-vibe-pick="${v.id}">
+      <span class="swatch">${v.sw.map(c=>`<i style="background:${c};box-shadow:inset 0 0 0 .5px rgba(128,128,128,.35)"></i>`).join("")}</span>
+      <span class="nm">${v.name}${v.id===cv?' ✓':''}</span>
+    </button>`).join("");
+}
+$("#acct-save").onclick = () => {
+  const v = $("#acct-venmo").value.trim();
+  const m = H() && H().members.find(x=>x.id===me.id); if(m) m.venmo = v;
+  me.venmo = v; save(); render(); toast(v ? "Venmo linked" : "Venmo cleared");
+  if(H()) cloud("setMembers", cur, H().members);
+};
+$("#pic-file").onchange = async e => {
+  const f = e.target.files[0]; if(!f) return;
+  try { await setPic(await shrinkImage(f)); }
+  catch(err){ toast("Couldn't read that image"); }
+  e.target.value = "";
+};
+$("#pic-google").onclick = () => {
+  const g = me.googlePic || "";
+  if(!g) return toast("No Google photo on this account");
+  setPic(g);
+};
+$("#pic-clear").onclick = () => setPic("");
+$("#pp").onclick = () => $("#pic-file").click();
 
 /* The avatar is the account menu — where people instinctively look for
    "my details", and therefore where the Venmo handle belongs. */
-$("#me-av").onclick = () => accountSheet(false);
+$("#me-av").onclick = () => { go("account"); const m=$("#app>main"); if(m) m.scrollTop = 0; };
 function accountSheet(focusVenmo){
   const mine = H().members.find(m=>m.id===me.id) || me;
   sheet(`<h2>Your account</h2>
@@ -1400,11 +1645,12 @@ function tripDetail(id){
 }
 
 /* ═══════════ ROUTING / RENDER ═══════════ */
-const TITLES = { pantry:"Pantry", receipt:"Receipt", settle:"Settle", spend:"Spending" };
+const TITLES = { pantry:"Pantry", receipt:"Receipt", settle:"Settle", spend:"Spending", account:"Account" };
 function go(tab){
   $("#screen-title").textContent = TITLES[tab] || "";
   $$(".tabbar button").forEach(b=>b.classList.toggle("on", b.dataset.tab===tab));
-  ["pantry","receipt","settle","spend"].forEach(t=>$("#tab-"+t).classList.toggle("hide", t!==tab));
+  ["pantry","receipt","settle","spend","account"].forEach(t=>$("#tab-"+t).classList.toggle("hide", t!==tab));
+  if(tab === "account") renderAccount();
   render();
 }
 $$(".tabbar button").forEach(b=>b.onclick=()=>go(b.dataset.tab));
@@ -1426,8 +1672,8 @@ function render(){
   $("#me-av").innerHTML = me.pic ? `<img src="${me.pic}">` : initials(me.name);
   /* ── pantry: Have (in the house) / Need (low or out) ── */
   const p = H().pantry;
-  const have = p.filter(i => (i.stock||"plenty") !== "out");
-  const need = p.filter(i => (i.stock||"plenty") !== "plenty");
+  const have = p;                      // everything, so tapping to empty doesn't hide the row
+  const need = p.filter(i => (i.stock||"full") !== "full");
   $("#cnt-have").textContent = have.length;
   $("#cnt-need").textContent = need.length;
 
@@ -1441,11 +1687,16 @@ function render(){
           byCat[k].map(i => itemRow(i, "need")).join("")).join("")
       : `<div class="empty"><b>Nothing needed</b>Either the house is fully stocked, or nobody has checked. Tap a jar in the pantry when something runs low.</div>`;
   } else {
-    $("#pantry-hint").textContent = have.length ? "Tap a jar to mark something running low or out." : "";
+    const outN = p.filter(i => (i.stock||"full") === "empty").length;
+    $("#pantry-hint").textContent = have.length
+      ? "Tap a jar: full, half, empty. Swipe a row left to delete."
+        + (outN ? ` · ${outN} empty` : "")
+      : "";
     $("#pantry-list").innerHTML = have.length
       ? have.map(i => itemRow(i, "have")).join("")
       : `<div class="empty"><b>Nothing on the shelves</b>Scan the first thing you find in the kitchen and we'll take it from there.</div>`;
   }
+  bindSwipe($("#pantry-list"));
   renderApprovals(); renderSettle(); renderSpend();
 }
 $("#btn-recheck").onclick    = recheckRequest;
@@ -1479,17 +1730,19 @@ function bootCloud(){
   window.HC_SYNC.onUser(u => {
     // On reload the restored session has the SAME uid, so this must still
     // (re)attach listeners — otherwise the app silently runs on stale cache.
-    if(u) signIn({ ...u, venmo: (me && me.venmo) || "" });
+    if(u) signIn({ ...u, googlePic: u.pic || (me && me.googlePic) || "",
+                   pic: (me && me.pic) || u.pic || "", venmo: (me && me.venmo) || "" });
     else if(me){ me = null; cur = null; houses = {}; save(); route(); }
   });
 }
 let cloudBooted = false;
 window.addEventListener("hc-sync-ready", bootCloud);
 window.onload = () => { initAuth(); bootCloud(); };
+applyVibe(currentVibe());
 route();
 
 /* expose for inline handlers */
-Object.assign(window,{signIn,closeSheet,approveJoin,denyJoin,cancelRequest,recheckRequest,isAdmin,addManual,delItem,toggleLine,toggleWho,renameLine,toggleExpand,signOut,confirmSignOut,setPrice,switchHouse,leaveToGate,recordPayment,tripDetail,onBarcode,$,cycleStock,restock,itemSheet,setWeight,balanceWeights});
+Object.assign(window,{signIn,closeSheet,approveJoin,denyJoin,cancelRequest,recheckRequest,isAdmin,addManual,delItem,toggleLine,toggleWho,renameLine,toggleExpand,signOut,confirmSignOut,setPrice,setVibe,renderAccount,swipeDelete,switchHouse,leaveToGate,recordPayment,tripDetail,onBarcode,$,cycleStock,restock,itemSheet,setWeight,balanceWeights});
 </script>
 </body>
 </html>
