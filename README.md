@@ -33,3 +33,11 @@ node verify.mjs http://localhost:8123
 1. **Cloud Console** → OAuth 2.0 Web client, authorized origin = your domain → paste ID into `GOOGLE_CLIENT_ID`.
 2. **Backend** — swap `DB`/`houses` for an API (houses, members, pantry, trips). Verify the Google ID token server-side.
 3. **Better OCR** — Tesseract is fine for clean receipts; Google Cloud Vision or Veryfi handles crumpled thermal paper far better. The parser in `parseReceipt()` stays the same either way.
+
+## Live
+- https://gethousecart.vercel.app (production)
+- https://housecart-kappa.vercel.app (Vercel-generated alias, same deployment)
+
+`housecart.vercel.app` and `house-cart.vercel.app` are both already claimed by
+other Vercel accounts, so the project is named `housecart` and serves from
+`gethousecart.vercel.app` until a real custom domain is attached.
