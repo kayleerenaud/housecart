@@ -20,6 +20,7 @@
 :root{
   --bg:#f6f4ef; --card:#fffdf9; --ink:#1d1b16; --muted:#7c766a; --line:#e6e1d6;
   --accent:#2f7d55; --accent-soft:#e6f2ea; --warn:#b4542a; --venmo:#008CFF;
+  --low:#c9853f; --low-soft:#f6ead9;
   --radius:14px; --shadow:0 1px 2px rgba(29,27,22,.05),0 8px 24px rgba(29,27,22,.06);
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -88,6 +89,44 @@ input,select{font:inherit;color:inherit}
 .who{display:flex;gap:5px;flex-wrap:wrap;padding:2px 0 9px 32px}
 .who button{border:1px solid var(--line);background:#fff;border-radius:999px;padding:3px 9px;font-size:11.5px;font-weight:600;color:var(--muted)}
 .who button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+/* ---------- the jar: stock level as fill, never as red ---------- */
+.jarbtn{width:44px;height:44px;display:grid;place-items:center;flex:0 0 auto;border-radius:10px}
+.jar{width:26px;height:32px;border:1.5px solid var(--line);border-radius:5px 5px 9px 9px;background:#fff;position:relative;overflow:hidden}
+.jar i{position:absolute;left:0;right:0;bottom:0;display:block;transition:height .22s ease-out,background .22s}
+.jar.plenty i{height:82%;background:var(--accent)}
+.jar.low    i{height:30%;background:var(--low)}
+.jar.out    {border-style:dashed;border-color:#c9c2b4}
+.jar.out    i{height:0}
+.stock-low{color:var(--low);font-weight:600}
+.stock-out{color:var(--muted);font-weight:600}
+.restocking{background:var(--accent-soft);transition:background .2s}
+
+/* ---------- have / need ---------- */
+.segpill{display:flex;background:#efece4;border-radius:999px;padding:3px;gap:3px;height:38px}
+.segpill button{flex:1;border-radius:999px;font-size:13px;font-weight:650;color:var(--muted);transition:background .18s,color .18s}
+.segpill button.on{background:var(--card);color:var(--ink);box-shadow:var(--shadow)}
+.segpill .cnt{font-variant-numeric:tabular-nums}
+.segpill button.on .cnt.need{color:var(--accent)}
+.cathead{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);padding:12px 0 3px}
+
+/* ---------- seesaw balance ---------- */
+.see{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
+.see:last-of-type{border-bottom:0}
+.seetrack{flex:1;height:6px;background:#efece4;border-radius:999px;position:relative;min-width:40px}
+.seetrack::after{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--line)}
+.seetrack i{position:absolute;top:0;bottom:0;border-radius:999px;display:block}
+.seeamt{width:78px;text-align:right;font-variant-numeric:tabular-nums;font-weight:700;font-size:15px}
+.seeamt small{display:block;font-size:11px;font-weight:500;color:var(--muted)}
+.storepill{display:inline-flex;align-items:center;gap:6px;background:#efece4;color:var(--muted);border-radius:999px;padding:6px 12px;font-size:12.5px;font-weight:600;max-width:100%}
+.storepill input{border:0;background:transparent;font:inherit;color:var(--ink);min-width:60px;flex:1;padding:0}
+.storemark{width:42px;height:42px;border-radius:12px;background:var(--accent-soft);display:grid;place-items:center;font-size:21px;flex:0 0 auto}
+.seg{display:flex;background:#efece4;border-radius:11px;padding:3px;gap:3px}
+.seg button{flex:1;padding:7px 8px;border-radius:8px;font-size:13px;font-weight:640;color:var(--muted)}
+.seg button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(29,27,22,.10)}
+.wrow{display:flex;align-items:center;gap:9px;padding:5px 0}
+.wrow .nm{flex:1;font-size:13.5px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wrow input[type=range]{flex:1.4;accent-color:var(--accent);min-width:0}
+.wpct{width:56px;text-align:right;font-variant-numeric:tabular-nums;font-weight:700;font-size:13.5px}
 .totrow{display:flex;justify-content:space-between;padding:5px 0;font-size:13.5px}
 .totrow.big{font-size:16px;font-weight:700;border-top:1px solid var(--line);margin-top:6px;padding-top:9px}
 
@@ -196,7 +235,7 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
       <div class="logo"><span class="dot">🧺</span> HouseCart</div>
       <div class="spacer"></div>
       <button class="housepill" id="house-switch" data-ref="house-switcher"><span id="house-name">—</span><span class="code" id="house-code">—</span> ▾</button>
-      <div class="avatar" id="me-av" data-ref="me-avatar"></div>
+      <button class="avatar" id="me-av" data-ref="me-avatar" aria-label="Your account"></button>
     </div>
   </header>
 
@@ -218,7 +257,11 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
         </div>
       </div>
       <div class="card">
-        <div class="row"><h2 style="flex:1">House pantry</h2><span class="tag grey" id="pantry-count">0</span></div>
+        <div class="segpill" data-ref="pantry-segments">
+          <button data-view="have" class="on" data-ref="have-tab">Have · <span class="cnt" id="cnt-have">0</span></button>
+          <button data-view="need" data-ref="need-tab">Need · <span class="cnt need" id="cnt-need">0</span></button>
+        </div>
+        <p class="sub" id="pantry-hint" style="margin-top:9px;font-size:11.5px"></p>
         <div id="pantry-list"></div>
       </div>
     </section>
@@ -230,11 +273,30 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
         <p class="sub">We read the line items, then <b>you</b> choose which ones the house splits. Anything you don't tick stays 100% yours.</p>
         <label class="btn" style="margin-top:11px" data-ref="scan-receipt-btn">📄 Photograph receipt
           <input type="file" id="receipt-file" accept="image/*" capture="environment" class="hide"></label>
-        <button class="btn ghost" id="btn-demo" data-ref="demo-receipt-btn" style="margin-top:7px">Try it with a sample receipt</button>
         <div id="ocr-prog" class="hide"><div class="progress"><i id="ocr-bar"></i></div><p class="sub" id="ocr-note" style="margin-top:6px">Reading receipt…</p></div>
       </div>
 
       <div id="receipt-edit" class="hide">
+        <div class="card" data-ref="store-card">
+          <div class="row">
+            <div class="storemark" id="store-mark">🏬</div>
+            <div style="flex:1;min-width:0">
+              <label class="sub" style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase">Store</label>
+              <input id="store-name" data-ref="store-name-input" placeholder="Which store?" style="border:0;background:transparent;font-size:16px;font-weight:700;width:100%;padding:1px 0;letter-spacing:-.01em">
+            </div>
+            <div style="text-align:right"><div class="sub" style="font-size:11px">total</div><div style="font-weight:700;font-variant-numeric:tabular-nums" id="store-total">—</div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="row"><h2 style="flex:1">Split shared items…</h2></div>
+          <div class="seg" style="margin-top:8px">
+            <button data-mode="even" class="on" data-ref="split-even">Evenly</button>
+            <button data-mode="custom" data-ref="split-custom">By percentage</button>
+          </div>
+          <div id="weights" class="hide" style="margin-top:11px"></div>
+        </div>
+
         <div class="card">
           <div class="row"><h2 style="flex:1">Which items does the house split?</h2><button class="btn ghost sm" id="btn-all">All</button><button class="btn ghost sm" id="btn-none">None</button></div>
           <p class="sub" style="margin-bottom:4px">Tap the box to include an item · tap the name to fix the OCR · tap <b>split N ways</b> to change who shares it. <span class="tag" id="split-count" style="margin-left:2px">—</span></p>
@@ -244,23 +306,31 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
           <h2>The split</h2>
           <div id="summary"></div>
         </div>
-        <button class="btn" id="btn-settle" data-ref="settle-btn">Save & settle up →</button>
+        <button class="btn" id="btn-settle" data-ref="settle-btn">Save trip →</button>
         <div style="height:14px"></div>
       </div>
     </section>
 
     <!-- ── SETTLE ── -->
     <section id="tab-settle" class="hide" data-ref="settle-tab">
-      <div class="card">
-        <h2>Who owes you</h2>
-        <p class="sub">One tap sends them a Venmo request, pre-filled.</p>
-        <div id="owed"></div>
+      <div class="card" data-ref="balance-strip">
+        <h2 id="bal-head">You're all square.</h2>
+        <p class="sub" style="margin-bottom:6px">Balances carry over between trips. Settle whenever it feels right — or never, we're not your accountant.</p>
+        <div id="seesaw"></div>
+        <div id="venmo-nudge" class="hide" style="margin-top:12px;border-top:1px solid var(--line);padding-top:11px">
+          <p class="sub" style="margin-bottom:7px">Add your Venmo handle so getting paid back doesn't require a conversation.</p>
+          <button class="btn sm" id="btn-nudge-venmo" data-ref="venmo-nudge-btn">Link @handle</button>
+        </div>
+        <button class="btn ghost" id="btn-squareup" data-ref="square-up-btn" style="margin-top:12px">Square up</button>
       </div>
-      <div class="card">
-        <h2>Your Venmo handle</h2>
-        <p class="sub">So housemates can pay you back without asking.</p>
-        <div class="row"><input class="field" id="venmo-in" data-ref="venmo-handle-input" placeholder="@your-venmo" style="margin:6px 0"><button class="btn sm" id="btn-venmo-save">Save</button></div>
-        <div id="house-venmo" style="margin-top:10px"></div>
+      <div class="card" data-ref="venmo-card">
+        <h2>Venmo handles</h2>
+        <p class="sub">Yours is how housemates pay you back without asking.</p>
+        <div class="row" style="margin-top:6px">
+          <input class="field" id="venmo-in" data-ref="venmo-handle-input" placeholder="@your-venmo" style="margin:0">
+          <button class="btn sm" id="btn-venmo-save">Save</button>
+        </div>
+        <div id="house-venmo" style="margin-top:12px"></div>
       </div>
     </section>
 
@@ -417,6 +487,11 @@ function migrateHouses(){
   let changed = false;
   Object.values(houses).forEach(h => {
     if(!h.pending){ h.pending = []; changed = true; }
+    if(!h.payments){ h.payments = []; changed = true; }
+    (h.pantry||[]).forEach(i => {
+      if(!i.stock){ i.stock = "plenty"; changed = true; }
+      if(!i.cat){ i.cat = guessCat([i.name,i.brand].join(" ")); changed = true; }
+    });
     if(!h.adminId && h.members?.length){ h.adminId = h.members[0].id; changed = true; }
   });
   if(changed) save();
@@ -537,7 +612,111 @@ function signOut(){ me=null; cur=null; save(); closeSheet(); route(); toast("Sig
 function switchHouse(c){ cur=c; save(); closeSheet(); render(); toast("Switched to "+houses[c].name); }
 function leaveToGate(){ cur=null; save(); route(); }
 
-/* ═══════════ 3. PANTRY — barcode + Open Food Facts ═══════════ */
+/* ═══════════ 3. PANTRY — stock, categories, have/need ═══════════ */
+const CATS = {
+  produce:   {emoji:"🥬", name:"Produce",   bg:"#e6f2ea"},
+  dairy:     {emoji:"🥛", name:"Dairy",     bg:"#faf3e0"},
+  meat:      {emoji:"🍗", name:"Meat",      bg:"#f7e7de"},
+  frozen:    {emoji:"🧊", name:"Frozen",    bg:"#e7eff3"},
+  pantry:    {emoji:"🥫", name:"Pantry",    bg:"#f1ead9"},
+  drinks:    {emoji:"🧃", name:"Drinks",    bg:"#f6ecdc"},
+  household: {emoji:"🧻", name:"Household", bg:"#edebf2"},
+  other:     {emoji:"🧺", name:"Other",     bg:"#efece4"}
+};
+const CAT_ORDER = ["produce","dairy","meat","frozen","pantry","drinks","household","other"];
+
+/* best-effort guess from the product name — always editable */
+function guessCat(text){
+  const s = (text||"").toLowerCase();
+  if(/lettuce|spinach|kale|tomato|banana|apple|orange|berr|onion|potato|carrot|pepper|avocado|cucumber|broccoli|salad|herb|lemon|lime|grape|melon|mushroom|celery|produce|fruit|veg/.test(s)) return "produce";
+  if(/frozen|ice cream|popsicle|freezer/.test(s)) return "frozen";
+  if(/milk|cheese|yogurt|yoghurt|butter|cream|egg|dairy|kefir|cottage/.test(s)) return "dairy";
+  if(/chicken|beef|pork|turkey|bacon|sausage|steak|ham|lamb|fish|salmon|tuna|shrimp|meat|tofu/.test(s)) return "meat";
+  if(/soap|towel|detergent|trash|bag|cleaner|sponge|tissue|toilet|paper|bleach|wipe|foil|wrap/.test(s)) return "household";
+  if(/water|soda|cola|juice|coffee|tea|beer|wine|brew|drink|seltzer|lemonade|kombucha/.test(s)) return "drinks";
+  if(/bread|pasta|rice|cereal|flour|sugar|oil|sauce|bean|soup|snack|chip|cracker|cookie|peanut|jam|honey|spice|salt|can/.test(s)) return "pantry";
+  return "other";
+}
+
+const STOCK_NEXT  = { plenty:"low", low:"out", out:"plenty" };
+const STOCK_LABEL = { plenty:"", low:"running low", out:"out" };
+
+function cycleStock(id){
+  const it = H().pantry.find(i=>i.id===id); if(!it) return;
+  it.stock = STOCK_NEXT[it.stock || "plenty"];
+  save(); render();
+  if(it.stock === "out") toast("On the list.");
+}
+
+/* Checking something off the shopping list refills it — you watch the jar rise. */
+function restock(id){
+  const it = H().pantry.find(i=>i.id===id); if(!it) return;
+  const row = document.querySelector(`[data-item="${id}"]`);
+  const jar = row?.querySelector(".jar");
+  if(jar){ jar.className = "jar plenty"; row.classList.add("restocking"); }
+  it.stock = "plenty"; save();
+  setTimeout(()=>{ render(); toast("Back on the shelf."); }, 420);
+}
+
+let PANTRY_VIEW = "have";
+$$('[data-ref="pantry-segments"] button').forEach(b => b.onclick = () => {
+  PANTRY_VIEW = b.dataset.view;
+  $$('[data-ref="pantry-segments"] button').forEach(x=>x.classList.toggle("on", x===b));
+  render();
+});
+
+function itemRow(i, mode){
+  const cat = CATS[i.cat || "other"] || CATS.other;
+  const st  = i.stock || "plenty";
+  const meta = [i.brand, i.size].filter(Boolean).join(" · ");
+  const stateTxt = st === "low" ? `<span class="stock-low">running low</span>`
+                 : st === "out" ? `<span class="stock-out">out</span>` : "";
+  // on the Need list the category header is already overhead, so don't repeat it
+  const fallback = mode === "need" ? "" : cat.name;
+  const metaLine = [meta || fallback, stateTxt].filter(Boolean).join(" · ") || "&nbsp;";
+  const thumb = i.img
+    ? `<img class="thumb" src="${i.img}" alt="">`
+    : `<div class="thumb" style="background:${cat.bg}">${cat.emoji}</div>`;
+  const control = mode === "need"
+    ? `<button class="chk" style="background:#fff;border-color:var(--line)" onclick="restock('${i.id}')" aria-label="Got it — back on the shelf"></button>`
+    : `<button class="jarbtn" onclick="cycleStock('${i.id}')" aria-label="${i.name}: ${STOCK_LABEL[st]||'plenty'}. Tap to change.">
+         <span class="jar ${st}"><i></i></span></button>`;
+  return `<div class="itemrow" data-item="${i.id}">
+    ${mode === "need" ? control : ""}
+    ${thumb}
+    <div style="flex:1;min-width:0;cursor:pointer" onclick="itemSheet('${i.id}')">
+      <div class="iname">${i.name}</div><div class="imeta">${metaLine}</div></div>
+    ${mode === "need" ? "" : control}
+  </div>`;
+}
+
+function itemSheet(id){
+  const i = H().pantry.find(x=>x.id===id); if(!i) return;
+  sheet(`<h2>${i.name}</h2>
+    <p class="sub" style="margin-bottom:10px">${[i.brand,i.size].filter(Boolean).join(" · ")||"added by hand"}</p>
+    <input class="field" id="ed-name" value="${(i.name||"").replace(/"/g,'&quot;')}">
+    <p class="sub" style="margin:8px 0 5px">Category</p>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      ${CAT_ORDER.map(k=>`<button class="cat-pick" data-k="${k}" style="border:1px solid ${(i.cat||'other')===k?'var(--accent)':'var(--line)'};background:${(i.cat||'other')===k?'var(--accent-soft)':'#fff'};border-radius:999px;padding:6px 11px;font-size:12px;font-weight:600">${CATS[k].emoji} ${CATS[k].name}</button>`).join("")}
+    </div>
+    <p class="sub" style="margin:12px 0 5px">How much is left?</p>
+    <div class="seg">
+      ${["plenty","low","out"].map(s=>`<button class="st-pick ${ (i.stock||'plenty')===s ? 'on':''}" data-s="${s}">${s==="plenty"?"Plenty":s==="low"?"Running low":"Out"}</button>`).join("")}
+    </div>
+    <button class="btn" style="margin-top:14px" id="ed-save">Save</button>
+    <button class="btn ghost" style="margin-top:7px;color:var(--warn)" id="ed-del">Remove from pantry</button>`);
+  let cat = i.cat || "other", stock = i.stock || "plenty";
+  $$("#sheet .cat-pick").forEach(b=>b.onclick=()=>{ cat=b.dataset.k;
+    $$("#sheet .cat-pick").forEach(x=>{ const on=x.dataset.k===cat;
+      x.style.borderColor = on?"var(--accent)":"var(--line)"; x.style.background = on?"var(--accent-soft)":"#fff"; }); });
+  $$("#sheet .st-pick").forEach(b=>b.onclick=()=>{ stock=b.dataset.s;
+    $$("#sheet .st-pick").forEach(x=>x.classList.toggle("on", x.dataset.s===stock)); });
+  $("#ed-save").onclick = () => { i.name = $("#ed-name").value.trim() || i.name; i.cat = cat; i.stock = stock;
+    save(); closeSheet(); render(); toast("Updated"); };
+  $("#ed-del").onclick = () => { delItem(i.id); closeSheet(); };
+}
+
+/* ═══════════ 3b. PANTRY — barcode + Open Food Facts ═══════════ */
 let stream=null, zx=null;
 $("#btn-scan").onclick = startScan;
 $("#btn-scanstop").onclick = stopScan;
@@ -586,7 +765,7 @@ function stopScan(){
 async function onBarcode(code){
   if(!code) return;
   stopScan(); toast("Barcode " + code);
-  let it = { id:crypto.randomUUID(), name:"Item "+code, brand:"", size:"", img:"", by:me.name, at:Date.now(), barcode:code };
+  let it = { id:crypto.randomUUID(), name:"Item "+code, brand:"", size:"", img:"", by:me.name, at:Date.now(), barcode:code, stock:"plenty", cat:"other" };
   try{
     const r = await fetch(`https://world.openfoodfacts.org/api/v2/product/${code}.json?fields=product_name,brands,quantity,image_front_small_url`);
     const j = await r.json();
@@ -595,6 +774,7 @@ async function onBarcode(code){
       it.brand = j.product.brands || "";
       it.size  = j.product.quantity || "";
       it.img   = j.product.image_front_small_url || "";
+      it.cat   = guessCat([it.name, it.brand, j.product.categories||""].join(" "));
     } else toast("Not in the product database — name it yourself");
   }catch(e){ toast("Lookup failed — offline?"); }
   H().pantry.unshift(it); save(); render();
@@ -614,33 +794,16 @@ document.addEventListener("change", e => {
 function addManual(){
   const n = $("#m-name").value.trim(); if(!n) return toast("Give it a name");
   H().pantry.unshift({ id:crypto.randomUUID(), name:n, brand:$("#m-brand").value.trim(), size:$("#m-size").value.trim(),
-    img: $("#m-prev").classList.contains("hide") ? "" : $("#m-prev").src, by:me.name, at:Date.now() });
+    img: $("#m-prev").classList.contains("hide") ? "" : $("#m-prev").src, by:me.name, at:Date.now(),
+    stock:"plenty", cat:guessCat(n + " " + $("#m-brand").value) });
   save(); closeSheet(); render(); toast("Added");
 }
 function delItem(id){ H().pantry = H().pantry.filter(i=>i.id!==id); save(); render(); }
 
 /* ═══════════ 4. RECEIPT — real OCR + parsing ═══════════ */
-let LINES = [], RCPT = {tax:0, total:0};
+let LINES = [], RCPT = {tax:0, total:0, store:""};
 
 $("#receipt-file").onchange = e => { const f=e.target.files[0]; if(f) runOCR(f); };
-$("#btn-demo").onclick = () => runOCR(sampleReceipt());
-
-function sampleReceipt(){   // real pixels -> real OCR, no external asset
-  const c = $("#cv"); c.width=520; c.height=660; const x = c.getContext("2d");
-  x.fillStyle="#fff"; x.fillRect(0,0,520,660); x.fillStyle="#000";
-  x.font="bold 26px monospace"; x.textAlign="center"; x.fillText("GREEN VALLEY MARKET", 260, 52);
-  x.font="16px monospace"; x.fillText("482 Maple St  (555) 019-2200", 260, 78);
-  x.textAlign="left"; x.font="19px monospace";
-  const rows=[["ORGANIC WHOLE MILK","4.99"],["SOURDOUGH LOAF","5.49"],["EGGS LARGE DOZ","6.29"],
-    ["CHICKEN THIGHS","11.84"],["BANANAS 2.1LB","1.68"],["OAT MILK BARISTA","5.99"],
-    ["PAPER TOWELS 6PK","12.99"],["DISH SOAP","3.79"],["COLD BREW 32OZ","7.49"],
-    ["ICE CREAM MINT","5.29"],["OLIVE OIL 500ML","14.99"],["TRASH BAGS 45CT","9.99"]];
-  let y=124; rows.forEach(([n,p])=>{ x.fillText(n,34,y); x.textAlign="right"; x.fillText(p,486,y); x.textAlign="left"; y+=32; });
-  y+=8; x.fillText("SUBTOTAL",34,y); x.textAlign="right"; x.fillText("90.82",486,y); x.textAlign="left"; y+=30;
-  x.fillText("TAX",34,y); x.textAlign="right"; x.fillText("5.45",486,y); x.textAlign="left"; y+=32;
-  x.font="bold 21px monospace"; x.fillText("TOTAL",34,y); x.textAlign="right"; x.fillText("96.27",486,y);
-  return c.toDataURL("image/png");
-}
 
 async function runOCR(src){
   $("#ocr-prog").classList.remove("hide"); $("#ocr-bar").style.width="4%";
@@ -654,12 +817,48 @@ async function runOCR(src){
   $("#ocr-prog").classList.add("hide");
   $("#receipt-intro").classList.add("hide");
   $("#receipt-edit").classList.remove("hide");
-  renderLines();
+  SPLIT_MODE = "even"; WEIGHTS = {};
+  $$(".seg button[data-mode]").forEach(x => x.classList.toggle("on", x.dataset.mode === "even"));
+  $("#store-name").value = RCPT.store || "";
+  $("#store-mark").textContent = storeEmoji(RCPT.store);
+  if(!RCPT.store) toast("Couldn't read the store name — type it in");
+  renderWeights(); renderLines();
+}
+$("#store-name").oninput = e => {
+  RCPT.store = e.target.value;
+  $("#store-mark").textContent = storeEmoji(RCPT.store);
+};
+function storeEmoji(name){
+  const n = (name||"").toLowerCase();
+  if(/pharm|cvs|walgreen|rite aid/.test(n)) return "💊";
+  if(/farm|market|grocer|produce|fresh/.test(n)) return "🥬";
+  if(/liquor|wine|beer|spirit/.test(n))         return "🍷";
+  if(/costco|sam.s|bj.s|wholesale/.test(n))     return "📦";
+  if(/target|walmart|kmart/.test(n))            return "🎯";
+  if(/bakery|bread/.test(n))                    return "🥖";
+  return "🏬";
 }
 
 const SKIP = /(sub\s*total|subtotal|total|tax|change|cash|credit|debit|balance|visa|mastercard|tend|auth|acct|approv|thank|store|market|st\b.*\d{3}|^\W*$)/i;
+
+/* The merchant is almost always the first substantial line of a receipt,
+   above the address and before any prices. */
+function detectStore(text){
+  const NOISE = /(receipt|invoice|welcome|thank|cashier|register|order|store\s*#|tel|phone|www\.|\.com|^\d)/i;
+  for(const raw of text.split("\n").slice(0, 8)){
+    const l = raw.trim().replace(/[^A-Za-z0-9 &'.\-]/g, " ").replace(/\s+/g, " ").trim();
+    if(l.length < 4) continue;
+    if(/\d{1,3}[.,]\d{2}\s*$/.test(l)) break;          // hit the item list already
+    if(NOISE.test(l)) continue;
+    if(l.replace(/[^A-Za-z]/g, "").length < 4) continue;
+    // Title Case it — receipts shout in caps
+    return l.toLowerCase().replace(/\b[a-z]/g, c => c.toUpperCase());
+  }
+  return "";
+}
+
 function parseReceipt(text){
-  LINES = []; RCPT = {tax:0, total:0};
+  LINES = []; RCPT = {tax:0, total:0, store: detectStore(text)};
   for(const raw of text.split("\n")){
     const l = raw.trim(); if(l.length < 4) continue;
     const m = l.match(/^(.*?)[\s.\-·]*(\d{1,3}[.,]\d{2})\s*[A-Z]?$/);
@@ -701,6 +900,36 @@ function renderLines(){
   renderSummary();
 }
 function toggleExpand(id){ EXPANDED.has(id) ? EXPANDED.delete(id) : EXPANDED.add(id); renderLines(); }
+
+/* ── even vs percentage ── */
+$$(".seg button[data-mode]").forEach(b => b.onclick = () => {
+  SPLIT_MODE = b.dataset.mode;
+  $$(".seg button[data-mode]").forEach(x => x.classList.toggle("on", x === b));
+  if(SPLIT_MODE === "custom" && !Object.keys(WEIGHTS).length) WEIGHTS = evenWeights();
+  renderWeights(); renderSummary();
+});
+
+function renderWeights(){
+  const box = $("#weights"), mem = H().members;
+  box.classList.toggle("hide", SPLIT_MODE !== "custom");
+  if(SPLIT_MODE !== "custom") return;
+  const total = mem.reduce((a,m)=>a+(Number(WEIGHTS[m.id])||0), 0);
+  box.innerHTML = mem.map(m=>`
+    <div class="wrow">
+      <span class="nm">${m.name.split(" ")[0]}${m.id===me.id?' (you)':''}</span>
+      <input type="range" min="0" max="100" step="1" value="${Number(WEIGHTS[m.id])||0}"
+             oninput="setWeight('${m.id}', this.value)" aria-label="${m.name} percentage">
+      <span class="wpct">${Number(WEIGHTS[m.id])||0}%</span>
+    </div>`).join("") +
+    `<div class="totrow" style="border-top:1px solid var(--line);margin-top:6px;padding-top:8px">
+       <span class="sub">Total</span>
+       <b style="color:${total===100?'var(--accent)':'var(--warn)'}">${total}%${total===100?' ✓':''}</b></div>` +
+    (total !== 100
+      ? `<p class="sub" style="font-size:11.5px;margin-top:4px">Doesn't need to hit 100 — we divide by the shares you've set. But it reads clearer when it does. <button class="btn ghost sm" style="margin-top:6px" onclick="balanceWeights()">Even it out</button></p>`
+      : "");
+}
+function setWeight(uid, v){ WEIGHTS[uid] = Number(v); renderWeights(); renderSummary(); }
+function balanceWeights(){ WEIGHTS = evenWeights(); renderWeights(); renderSummary(); }
 function toggleLine(id){ const l=LINES.find(x=>x.id===id); l.split=!l.split; if(l.split&&!l.who.length) l.who=H().members.map(m=>m.id); renderLines(); }
 function renameLine(id,v){ LINES.find(x=>x.id===id).name = v; renderSummary(); }
 function toggleWho(id,uid){
@@ -718,18 +947,54 @@ $("#btn-none").onclick = () => { LINES.forEach(l=>l.split=false); renderLines();
    spare cent to a different person each time, and tax is apportioned by the
    largest-remainder method — so the parts always re-add to the printed total
    exactly, never $0.01 off. */
+/* SPLIT MODE ─ 'even' gives everyone weight 1 (identical to a plain 1/N split);
+   'custom' uses the percentages set on the receipt. Both run the same code path,
+   so the cent-exactness guarantee holds either way. Weights are renormalised
+   over just the people sharing a given item. */
+let SPLIT_MODE = "even";
+let WEIGHTS = {};                                  // uid -> percent (custom mode)
+
+function evenWeights(){
+  const ids = H().members.map(m=>m.id), n = ids.length;
+  const base = Math.floor(100/n), w = {};
+  ids.forEach((i,k) => w[i] = base + (k < 100 - base*n ? 1 : 0));
+  return w;
+}
+function activeWeights(){
+  if(SPLIT_MODE !== "custom") { const w={}; H().members.forEach(m=>w[m.id]=1); return w; }
+  const w = {}; H().members.forEach(m => w[m.id] = Math.max(0, Number(WEIGHTS[m.id] ?? 0)));
+  return w;
+}
+
 function computeSplit(){
   const ids = H().members.map(m=>m.id);
   const c = n => Math.round(n*100);
+  const W = activeWeights();
   const owedC = {}; ids.forEach(i=>owedC[i]=0);
-  let sharedC = 0, mineC = 0;
+  let sharedC = 0, mineC = 0, spareCursor = 0;
 
   LINES.forEach((l, idx) => {
     const p = c(l.price);
     if(l.split && l.who.length){
       sharedC += p;
-      const k = l.who.length, base = Math.floor(p/k), rem = p - base*k;
-      l.who.forEach((w, j) => { owedC[w] = (owedC[w]||0) + base + (((j - idx % k + k) % k) < rem ? 1 : 0); });
+      // weights restricted to this item's sharers; all-zero falls back to even
+      let who = l.who.slice();
+      let tot = who.reduce((a,u)=>a+(W[u]||0), 0);
+      if(tot <= 0){ who.forEach(u=>W[u]=1); tot = who.length; }
+      // largest-remainder over the item, rotated so spare cents don't always land on one person
+      const parts = who.map(u => { const v = p*(W[u]||0)/tot; return {u, v, f:Math.floor(v)}; });
+      let left = p - parts.reduce((a,x)=>a+x.f, 0);
+      parts.sort((a,b) => (b.v-b.f) - (a.v-a.f));
+      // even split: every remainder is identical, so rotate the spare cent by item
+      // index rather than always handing it to the same person. Custom weights:
+      // give it to the largest remainders, which is the fair apportionment.
+      const rotate = SPLIT_MODE !== "custom" && parts.length > 0;
+      const off = rotate ? spareCursor % parts.length : 0;
+      parts.forEach((x,n) => {
+        const rank = rotate ? (n - off + parts.length) % parts.length : n;
+        owedC[x.u] += x.f + (rank < left ? 1 : 0);
+      });
+      if(rotate) spareCursor += left;   // next item starts where this one stopped
     } else mineC += p;
   });
 
@@ -750,6 +1015,7 @@ function computeSplit(){
 }
 function renderSummary(){
   const s = computeSplit(), mem = H().members;
+  $("#store-total").textContent = money(s.grand);
   $("#summary").innerHTML =
     mem.map(m=>`<div class="totrow"><span>${m.name}${m.id===me.id?' (you)':''}</span><b>${money(s.owed[m.id])}</b></div>`).join("") +
     (s.mine>0?`<div class="totrow" style="color:var(--muted)"><span>Not split — yours alone</span><span>${money(s.mine+s.taxMine)}</span></div>`:"") +
@@ -762,11 +1028,12 @@ function renderSummary(){
 $("#btn-settle").onclick = () => {
   const s = computeSplit();
   H().trips.unshift({ id:crypto.randomUUID(), at:Date.now(), payer:me.id, payerName:me.name,
+    store: (RCPT.store||"").trim(), splitMode: SPLIT_MODE, weights: {...activeWeights()},
     items:LINES.map(({name,price,split,who})=>({name,price,split,who})),
     owed:s.owed, total:s.grand, shared:s.shared });
-  save(); LINES=[]; RCPT={tax:0,total:0};
+  save(); LINES=[]; RCPT={tax:0,total:0,store:""};
   $("#receipt-edit").classList.add("hide"); $("#receipt-intro").classList.remove("hide");
-  go("settle"); toast("Trip saved");
+  go("settle"); toast("Trip saved — balances updated.");
 };
 
 /* ═══════════ 5. SETTLE — Venmo links ═══════════ */
@@ -774,39 +1041,121 @@ function venmoLink(handle, amount, note){
   const h = (handle||"").replace(/^@/,"");
   return `https://venmo.com/${encodeURIComponent(h)}?txn=charge&amount=${amount.toFixed(2)}&note=${encodeURIComponent(note)}`;
 }
+/* Running balance, Splitwise-style: every trip and every payment accrues into
+   one number per housemate. Nothing needs settling receipt-by-receipt. */
 function netOwed(){
   const net = {}; H().members.forEach(m=>{ if(m.id!==me.id) net[m.id]=0; });
   H().trips.forEach(t=>{
-    if(t.settled) return;
     if(t.payer===me.id){ Object.entries(t.owed).forEach(([u,v])=>{ if(u!==me.id) net[u]=(net[u]||0)+v; }); }
     else if(t.owed[me.id]){ net[t.payer]=(net[t.payer]||0)-t.owed[me.id]; }
   });
+  (H().payments||[]).forEach(p=>{
+    if(p.to===me.id)   net[p.from] = (net[p.from]||0) - p.amount;   // they paid me back
+    if(p.from===me.id) net[p.to]   = (net[p.to]||0)   + p.amount;   // I paid them
+  });
   return net;
 }
+
 function renderSettle(){
   const net = netOwed(), mem = H().members;
-  const rows = Object.entries(net).filter(([,v])=>Math.abs(v)>0.01);
-  $("#owed").innerHTML = rows.length ? rows.map(([uid,v])=>{
-    const m = mem.find(x=>x.id===uid) || {name:"Housemate", venmo:""};
-    const them = v>0;
-    return `<div class="itemrow">
-      <div class="avatar" style="width:40px;height:40px;font-size:14px;${them?'':'background:var(--muted)'}">${initials(m.name)}</div>
-      <div style="flex:1"><div class="iname">${m.name}</div>
-        <div class="imeta">${them?`owes you <b>${money(v)}</b>`:`you owe <b>${money(-v)}</b>`}${m.venmo?` · @${m.venmo.replace(/^@/,'')}`:' · no Venmo on file'}</div></div>
-      ${m.venmo ? `<a class="btn venmo sm" href="${venmoLink(m.venmo, Math.abs(v), them?`HouseCart: ${H().name} groceries`:`HouseCart: paying you back`)}" target="_blank" rel="noopener" data-ref="venmo-btn">${them?'Request':'Pay'}</a>`
-                : `<span class="tag grey">no venmo</span>`}
-    </div>`;
-  }).join("") + `<button class="btn ghost" style="margin-top:12px" onclick="markSettled()">Mark everything settled</button>`
-   : `<div class="empty"><span class="big">🤝</span>All square. Nobody owes anybody.</div>`;
+  const rows = Object.entries(net).filter(([,v]) => Math.abs(v) > 0.005);
+  const mine = mem.find(m=>m.id===me.id) || {};
+  const overall = rows.reduce((a,[,v])=>a+v, 0);
 
-  $("#venmo-in").value = (mem.find(m=>m.id===me.id)?.venmo) || "";
-  $("#house-venmo").innerHTML = mem.map(m=>`<div class="totrow"><span>${m.name}</span><span class="sub">${m.venmo?'@'+m.venmo.replace(/^@/,''):'— not linked'}</span></div>`).join("");
+  $("#bal-head").innerHTML =
+    Math.abs(overall) < 0.005 ? "You're all square."
+    : overall > 0 ? `You're up <span style="color:var(--accent)">${money(overall)}</span> with the house.`
+                  : `You're down ${money(-overall)} with the house.`;
+
+  const scale = Math.max(1, ...rows.map(([,v])=>Math.abs(v)));
+  $("#seesaw").innerHTML = rows.length ? rows.map(([uid,v])=>{
+    const m = mem.find(x=>x.id===uid) || {name:"Housemate", venmo:""};
+    const up = v > 0, pct = Math.min(50, Math.abs(v)/scale*50);
+    return `<div class="see">
+      <div class="avatar">${m.pic?`<img src="${m.pic}">`:initials(m.name)}</div>
+      <div style="flex:0 0 auto;width:74px;font-size:13.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.name.split(" ")[0]}</div>
+      <div class="seetrack">
+        <i style="${up ? `left:50%;width:${pct}%;background:var(--accent)`
+                       : `right:50%;width:${pct}%;background:var(--muted);opacity:.45`}"></i>
+      </div>
+      <div class="seeamt">${money(Math.abs(v))}<small>${up?'owed':'owes'}</small></div>
+    </div>`;
+  }).join("") : `<div class="empty"><span class="big">🤝</span>Perfectly balanced. Nobody owes anybody a cent — go split a pizza and ruin it.</div>`;
+
+  $("#venmo-nudge").classList.toggle("hide", !!mine.venmo);
+  $("#btn-squareup").classList.toggle("hide", rows.length === 0);
+  $("#venmo-in").value = mine.venmo || "";
+  $("#house-venmo").innerHTML = mem.map(m=>`<div class="totrow"><span>${m.name}${m.id===me.id?' <span class="sub">(you)</span>':''}</span><span class="sub">${m.venmo?'@'+m.venmo.replace(/^@/,''):'— not linked'}</span></div>`).join("");
 }
+
+/* Square up: Venmo link per person, and recording a payment adjusts the running
+   balance instead of wiping trips clean. */
+$("#btn-squareup").onclick = () => {
+  const net = netOwed(), mem = H().members;
+  const rows = Object.entries(net).filter(([,v]) => Math.abs(v) > 0.005);
+  sheet(`<h2>Square up</h2>
+    <p class="sub" style="margin-bottom:10px">Send the request, then mark it once the money actually lands.</p>` +
+    rows.map(([uid,v])=>{
+      const m = mem.find(x=>x.id===uid) || {name:"Housemate", venmo:""};
+      const them = v > 0, amt = Math.abs(v);
+      const note = them ? `HouseCart: ${H().name} groceries` : `HouseCart: paying you back`;
+      return `<div class="itemrow">
+        <div class="avatar" style="width:40px;height:40px;font-size:14px">${initials(m.name)}</div>
+        <div style="flex:1;min-width:0"><div class="iname">${m.name}</div>
+          <div class="imeta">${them?`owes you <b>${money(amt)}</b>`:`you owe <b>${money(amt)}</b>`}${m.venmo?` · @${m.venmo.replace(/^@/,'')}`:' · no Venmo linked'}</div></div>
+        ${m.venmo ? `<a class="btn venmo sm" href="${venmoLink(m.venmo, amt, note)}" target="_blank" rel="noopener" data-ref="venmo-btn">${them?'Request':'Pay'}</a>`
+                  : `<span class="tag grey">no venmo</span>`}
+        <button class="btn ghost sm" onclick="recordPayment('${uid}',${amt},${them})">Mark paid</button>
+      </div>`;
+    }).join(""));
+};
+
+function recordPayment(uid, amount, theyPaidMe){
+  H().payments = H().payments || [];
+  H().payments.push({ id:crypto.randomUUID(), at:Date.now(), amount,
+    from: theyPaidMe ? uid : me.id, to: theyPaidMe ? me.id : uid });
+  save(); closeSheet(); render(); toast("Balance updated");
+}
+
+$("#btn-nudge-venmo").onclick = () => accountSheet(true);
+
+/* The avatar is the account menu — where people instinctively look for
+   "my details", and therefore where the Venmo handle belongs. */
+$("#me-av").onclick = () => accountSheet(false);
+function accountSheet(focusVenmo){
+  const mine = H().members.find(m=>m.id===me.id) || me;
+  sheet(`<h2>Your account</h2>
+    <div class="itemrow" style="border-bottom:1px solid var(--line)">
+      <div class="avatar" style="width:44px;height:44px;font-size:15px">${me.pic?`<img src="${me.pic}">`:initials(me.name)}</div>
+      <div style="flex:1;min-width:0"><div class="iname">${me.name}</div><div class="imeta">${me.email||""}</div></div>
+    </div>
+    <h2 style="font-size:14px;margin-top:14px">Venmo handle</h2>
+    <p class="sub" style="margin-bottom:2px">${mine.venmo
+      ? "Housemates can pay you back in one tap."
+      : "Add it so getting paid back doesn't require a conversation."}</p>
+    <div class="row"><input class="field" id="acct-venmo" data-ref="account-venmo-input"
+      placeholder="@your-venmo" value="${(mine.venmo||"").replace(/"/g,'&quot;')}" style="margin:6px 0">
+      <button class="btn sm" id="acct-save">Save</button></div>
+    <p class="sub" style="font-size:11.5px">Just the handle — <b>@kaylee-r</b> or <b>kaylee-r</b>. We only ever build a payment link with it.</p>
+    <div class="row" style="margin-top:16px;border-top:1px solid var(--line);padding-top:12px">
+      <button class="btn ghost sm" onclick="closeSheet()">Close</button>
+      <div style="flex:1"></div>
+      <button class="btn ghost sm" onclick="signOut()" style="color:var(--warn)">Sign out</button>
+    </div>`);
+  const save1 = () => {
+    const v = $("#acct-venmo").value.trim();
+    const m = H().members.find(x=>x.id===me.id); if(m) m.venmo = v;
+    me.venmo = v; save(); closeSheet(); render(); toast(v ? "Venmo linked" : "Venmo cleared");
+  };
+  $("#acct-save").onclick = save1;
+  $("#acct-venmo").onkeydown = e => { if(e.key==="Enter") save1(); };
+  if(focusVenmo) setTimeout(()=>$("#acct-venmo")?.focus(), 60);
+}
+
 $("#btn-venmo-save").onclick = () => {
   const v = $("#venmo-in").value.trim();
   H().members.find(m=>m.id===me.id).venmo = v; me.venmo = v; save(); renderSettle(); toast("Venmo linked");
 };
-function markSettled(){ H().trips.forEach(t=>t.settled=true); save(); render(); toast("Settled up"); }
 
 /* ═══════════ 6. SPENDING ═══════════ */
 function renderSpend(){
@@ -852,19 +1201,17 @@ function renderSpend(){
 
   $("#history").innerHTML = trips.length ? [...trips].sort((a,b)=>b.at-a.at).map(t=>`
     <div class="itemrow" style="cursor:pointer" onclick="tripDetail('${t.id}')">
-      <div class="thumb">🧾</div>
+      <div class="thumb">${storeEmoji(t.store)}</div>
       <div style="flex:1;min-width:0">
-        <div class="iname">${new Date(t.at).toLocaleDateString(undefined,{month:"short",day:"numeric"})} · ${t.items.length} item${t.items.length===1?'':'s'}</div>
-        <div class="imeta">${t.payerName.split(" ")[0]} paid · ${money(t.shared)} shared</div></div>
-      <div style="text-align:right;flex:0 0 auto">
-        <div class="lprice">${money(t.total)}</div>
-        ${t.settled?'<div class="sub" style="font-size:10.5px;color:var(--accent);font-weight:600">settled</div>':''}</div>
-    </div>`).join("") : `<div class="empty"><span class="big">🧾</span>No trips yet. Scan a receipt to start tracking.</div>`;
+        <div class="iname">${t.store || "Somewhere with receipts"}</div>
+        <div class="imeta">${new Date(t.at).toLocaleDateString(undefined,{month:"short",day:"numeric"})} · ${t.items.length} item${t.items.length===1?'':'s'} · ${t.payerName.split(" ")[0]} paid</div></div>
+      <div style="text-align:right;flex:0 0 auto"><div class="lprice">${money(t.total)}</div></div>
+    </div>`).join("") : `<div class="empty"><span class="big">🧾</span>No trips logged. Next grocery run, photograph the receipt before it dissolves in someone's pocket.</div>`;
 }
 function tripDetail(id){
   const t = H().trips.find(x=>x.id===id), mem=H().members;
-  sheet(`<h2>${new Date(t.at).toLocaleString(undefined,{dateStyle:"medium"})}</h2>
-    <p class="sub" style="margin-bottom:10px">${t.payerName} paid ${money(t.total)}</p>
+  sheet(`<h2>${t.store || "Somewhere with receipts"}</h2>
+    <p class="sub" style="margin-bottom:10px">${new Date(t.at).toLocaleString(undefined,{dateStyle:"medium"})} · ${t.payerName} paid ${money(t.total)}${t.splitMode==="custom"?" · split by percentage":""}</p>
     ${t.items.map(i=>`<div class="totrow"><span>${i.split?'':'<span class="sub">(not split) </span>'}${i.name}</span><span>${money(i.price)}</span></div>`).join("")}
     <div style="border-top:1px solid var(--line);margin:10px 0;padding-top:10px">
     ${Object.entries(t.owed).map(([u,v])=>`<div class="totrow"><span>${(mem.find(m=>m.id===u)||{name:"?"}).name}</span><b>${money(v)}</b></div>`).join("")}</div>`);
@@ -883,15 +1230,28 @@ function render(){
   $("#house-name").textContent = H().name;
   $("#house-code").textContent = H().code;
   $("#me-av").innerHTML = me.pic ? `<img src="${me.pic}">` : initials(me.name);
+  /* ── pantry: Have (in the house) / Need (low or out) ── */
   const p = H().pantry;
-  $("#pantry-count").textContent = p.length + (p.length===1?" item":" items");
-  $("#pantry-list").innerHTML = p.length ? p.map(i=>`
-    <div class="itemrow">
-      ${i.img?`<img class="thumb" src="${i.img}" alt="">`:`<div class="thumb">🥫</div>`}
-      <div style="flex:1;min-width:0"><div class="iname">${i.name}</div>
-        <div class="imeta">${[i.brand,i.size].filter(Boolean).join(" · ")||"added manually"} · by ${i.by.split(" ")[0]}</div></div>
-      <button class="x" onclick="delItem('${i.id}')">×</button>
-    </div>`).join("") : `<div class="empty"><span class="big">🥑</span>Nothing in the pantry yet.<br>Scan a barcode to pull in the photo automatically.</div>`;
+  const have = p.filter(i => (i.stock||"plenty") !== "out");
+  const need = p.filter(i => (i.stock||"plenty") !== "plenty");
+  $("#cnt-have").textContent = have.length;
+  $("#cnt-need").textContent = need.length;
+
+  if(PANTRY_VIEW === "need"){
+    $("#pantry-hint").textContent = need.length ? "Tick something off when it's back in the house." : "";
+    const byCat = {};
+    need.forEach(i => { const k = i.cat || "other"; (byCat[k] = byCat[k] || []).push(i); });
+    $("#pantry-list").innerHTML = need.length
+      ? CAT_ORDER.filter(k=>byCat[k]).map(k =>
+          `<div class="cathead">${CATS[k].emoji} ${CATS[k].name}</div>` +
+          byCat[k].map(i => itemRow(i, "need")).join("")).join("")
+      : `<div class="empty"><span class="big">✨</span>Nothing needed. Either the house is fully stocked, or nobody's opened the fridge and checked.<br>Tap a jar in the pantry when something runs low.</div>`;
+  } else {
+    $("#pantry-hint").textContent = have.length ? "Tap a jar to mark something running low or out." : "";
+    $("#pantry-list").innerHTML = have.length
+      ? have.map(i => itemRow(i, "have")).join("")
+      : `<div class="empty"><span class="big">🫙</span>Nothing on the shelves yet.<br>Scan the first thing you find in the kitchen — we'll take it from there.</div>`;
+  }
   renderApprovals(); renderSettle(); renderSpend();
 }
 $("#btn-recheck").onclick    = recheckRequest;
@@ -919,7 +1279,7 @@ window.onload = initAuth;
 route();
 
 /* expose for inline handlers */
-Object.assign(window,{signIn,closeSheet,approveJoin,denyJoin,cancelRequest,recheckRequest,isAdmin,addManual,delItem,toggleLine,toggleWho,renameLine,toggleExpand,signOut,switchHouse,leaveToGate,markSettled,tripDetail,onBarcode,$});
+Object.assign(window,{signIn,closeSheet,approveJoin,denyJoin,cancelRequest,recheckRequest,isAdmin,addManual,delItem,toggleLine,toggleWho,renameLine,toggleExpand,signOut,switchHouse,leaveToGate,recordPayment,tripDetail,onBarcode,$,cycleStock,restock,itemSheet,setWeight,balanceWeights});
 </script>
 </body>
 </html>

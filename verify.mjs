@@ -78,8 +78,13 @@ await p.screenshot({ path: '/tmp/v-pantry.png' });
 /* ── 4. Receipt OCR (REAL Tesseract on real pixels) ── */
 log('\n=== 4. RECEIPT OCR ===');
 await p.click('[data-ref="tab-receipt-btn"]');
-await p.click('[data-ref="demo-receipt-btn"]');
+ok(await p.evaluate(() => !document.querySelector('[data-ref="demo-receipt-btn"]')), 'sample-receipt shortcut is gone');
+// the REAL user path: hand it a photo of a receipt
+await p.setInputFiles('#receipt-file', '/tmp/receipt.png');
 await p.waitForSelector('#receipt-edit:not(.hide)', { timeout: 120000 });
+const store = await p.inputValue('[data-ref="store-name-input"]');
+log(`  store detected from the receipt: "${store}"`);
+ok(/green valley/i.test(store), 'store name read off the receipt and shown');
 const parsed = await p.evaluate(() => ({ lines: LINES.map(l => [l.name, l.price]), tax: RCPT.tax, total: RCPT.total }));
 log('  OCR parsed ' + parsed.lines.length + ' line items:');
 parsed.lines.forEach(([n, v]) => log(`     ${n.padEnd(24)} ${v.toFixed(2)}`));
@@ -113,11 +118,21 @@ log('\n=== 6. SETTLE + VENMO ===');
 await p.click('[data-ref="settle-btn"]');
 await p.waitForSelector('#tab-settle:not(.hide)');
 await p.waitForTimeout(400);
+await p.click('[data-ref="square-up-btn"]');
+await p.waitForTimeout(400);
 const links = await p.$$eval('[data-ref="venmo-btn"]', els => els.map(e => e.href));
 links.forEach(l => log('  ' + l));
 ok(links.length === 2, 'a Venmo request link per housemate who owes');
 ok(links.every(l => /venmo\.com\/.+txn=charge&amount=\d+\.\d\d/.test(l)), 'links are valid pre-filled Venmo charge URLs');
 await p.screenshot({ path: '/tmp/v-settle.png' });
+// running balance: recording a payment reduces it rather than wiping trips
+const before = await p.evaluate(() => Object.values(netOwed()).reduce((a,v)=>a+v,0));
+await p.evaluate(() => { const n = netOwed(); const uid = Object.keys(n)[0]; recordPayment(uid, 10, true); });
+await p.waitForTimeout(300);
+const after = await p.evaluate(() => Object.values(netOwed()).reduce((a,v)=>a+v,0));
+log(`  balance ${before.toFixed(2)} -> ${after.toFixed(2)} after a $10 payment`);
+ok(Math.abs((before - after) - 10) < 0.01, 'recording a payment moves the running balance by exactly that amount');
+ok(await p.evaluate(() => H().trips.length === 1), 'trips are NOT wiped when settling (Splitwise model)');
 
 /* ── 7. Spending tracking, per house ── */
 log('\n=== 7. SPENDING ===');
@@ -126,6 +141,7 @@ await p.waitForTimeout(400);
 const st = await p.evaluate(() => ({ house: $('#s-house').textContent, me: $('#s-me').textContent, trips: $('#s-trips').textContent }));
 log(`  house total ${st.house} · your share ${st.me} · ${st.trips} trip(s)`);
 ok(st.trips === '1' && st.house !== '$0', 'trip recorded into this household ledger');
+ok((await p.textContent('#history')).includes('Green Valley'), 'trip history is titled by store');
 await p.screenshot({ path: '/tmp/v-spend.png', fullPage: true });
 
 log(`\n${fails === 0 ? 'ALL CHECKS PASSED' : fails + ' CHECK(S) FAILED'}`);
