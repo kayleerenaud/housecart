@@ -4,6 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>HouseCart — split the groceries, not the friendship</title>
+<meta name="description" content="Scan groceries, OCR the receipt, split only what's actually shared, and settle up on Venmo.">
+<meta name="theme-color" content="#2f7d55">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="HouseCart">
+<meta property="og:title" content="HouseCart">
+<meta property="og:description" content="Split the groceries, not the friendship.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%232f7d55'/><text y='.9em' x='50' text-anchor='middle' font-size='62'>%F0%9F%A7%BA</text></svg>">
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -75,7 +83,8 @@ input,select{font:inherit;color:inherit}
 .lname{flex:1;font-size:14px;min-width:0}
 .lname input{border:0;background:transparent;width:100%;padding:2px 0;font-weight:560}
 .lprice{font-variant-numeric:tabular-nums;font-weight:640;font-size:14px}
-.who{display:flex;gap:5px;flex-wrap:wrap;padding:2px 0 8px 32px}
+.whosum{display:block;text-align:left;padding:1px 0 7px 32px;font-size:11.5px;font-weight:600;color:var(--accent);letter-spacing:.01em}
+.who{display:flex;gap:5px;flex-wrap:wrap;padding:2px 0 9px 32px}
 .who button{border:1px solid var(--line);background:#fff;border-radius:999px;padding:3px 9px;font-size:11.5px;font-weight:600;color:var(--muted)}
 .who button.on{background:var(--accent);border-color:var(--accent);color:#fff}
 .totrow{display:flex;justify-content:space-between;padding:5px 0;font-size:13.5px}
@@ -104,6 +113,27 @@ input,select{font:inherit;color:inherit}
 .sheet{background:var(--card);width:100%;max-width:520px;border-radius:18px 18px 0 0;padding:18px 16px calc(22px + env(safe-area-inset-bottom));max-height:88dvh;overflow:auto}
 .toast{position:fixed;bottom:78px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:9px 15px;border-radius:99px;font-size:13px;z-index:200;opacity:0;transition:opacity .2s;pointer-events:none}
 .toast.on{opacity:1}
+
+/* ---------- desktop: sit the phone-width app in a proper frame ---------- */
+@media (min-width:900px){
+  body{ background:#ece8e0; padding-bottom:0; min-height:100dvh; }
+  #app{
+    max-width:520px;margin:26px auto;background:var(--bg);
+    border:1px solid #dcd6ca;border-radius:26px;overflow:hidden;
+    box-shadow:0 20px 60px rgba(29,27,22,.13);
+    height:min(880px, calc(100dvh - 52px));display:flex;flex-direction:column;
+  }
+  #app>main{flex:1;overflow-y:auto;padding-bottom:16px}
+  .topbar{position:static;background:var(--card)}
+  .tabbar{position:static;max-width:none}
+  .tabbar,.topbar{border-radius:0}
+  .toast{bottom:96px}
+  .modal{place-items:center}
+  .sheet{border-radius:18px;max-width:460px;max-height:76dvh}
+}
+/* keyboard focus that doesn't look like a bug */
+button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
 <body>
@@ -187,7 +217,7 @@ input,select{font:inherit;color:inherit}
       <div id="receipt-edit" class="hide">
         <div class="card">
           <div class="row"><h2 style="flex:1">Which items does the house split?</h2><button class="btn ghost sm" id="btn-all">All</button><button class="btn ghost sm" id="btn-none">None</button></div>
-          <p class="sub" style="margin-bottom:4px">Tap an item to include it. Tap a name to fix the OCR. Tap a face to change who shares that item.</p>
+          <p class="sub" style="margin-bottom:4px">Tap the box to include an item · tap the name to fix the OCR · tap <b>split N ways</b> to change who shares it. <span class="tag" id="split-count" style="margin-left:2px">—</span></p>
           <div id="lines" data-ref="receipt-lines"></div>
         </div>
         <div class="card" data-ref="split-summary">
@@ -220,6 +250,10 @@ input,select{font:inherit;color:inherit}
         <div><div class="n" id="s-house">$0</div><div class="l">House total</div></div>
         <div><div class="n" id="s-me">$0</div><div class="l">Your share</div></div>
         <div><div class="n" id="s-trips">0</div><div class="l">Trips</div></div>
+      </div>
+      <div class="card">
+        <h2>Month by month</h2>
+        <div id="spend-months"></div>
       </div>
       <div class="card">
         <h2>Who's been paying</h2>
@@ -366,8 +400,25 @@ $("#house-switch").onclick = () => {
        <h2 style="font-size:14px">Invite your housemates</h2>
        <p class="sub">Send them this code — they pick “Join house” after signing in with Google.</p>
        <div class="field" style="text-align:center;font-size:24px;font-weight:800;letter-spacing:.18em;color:var(--accent);font-family:ui-monospace,monospace">${cur}</div>
+       <div class="row"><button class="btn" id="btn-copy" data-ref="copy-code-btn">Copy code</button><button class="btn ghost" id="btn-share">Share</button></div>
+     </div>
+     <div class="row" style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px">
+       <button class="btn ghost sm" onclick="closeSheet()">Close</button>
+       <div class="spacer" style="flex:1"></div>
+       <button class="btn ghost sm" onclick="signOut()" style="color:var(--warn)">Sign out</button>
      </div>`);
+  $("#btn-copy").onclick = async () => {
+    const msg = `Join our HouseCart household "${H().name}" with code ${cur}`;
+    try{ await navigator.clipboard.writeText(cur); toast("Code copied"); }
+    catch(e){ prompt("Copy this code:", cur); }
+  };
+  $("#btn-share").onclick = async () => {
+    const text = `Join our HouseCart household “${H().name}” — code ${cur}`;
+    if(navigator.share){ try{ await navigator.share({title:"HouseCart", text, url:location.href}); }catch(e){} }
+    else { try{ await navigator.clipboard.writeText(text + " " + location.href); toast("Invite copied"); }catch(e){ prompt("Send this:", text); } }
+  };
 };
+function signOut(){ me=null; cur=null; save(); closeSheet(); route(); toast("Signed out"); }
 function switchHouse(c){ cur=c; save(); closeSheet(); render(); toast("Switched to "+houses[c].name); }
 function leaveToGate(){ cur=null; save(); route(); }
 
@@ -378,6 +429,9 @@ $("#btn-scanstop").onclick = stopScan;
 
 async function startScan(){
   $("#scanbox").classList.remove("hide");
+  $("#video").classList.remove("hide");
+  $("#btn-scanstop").classList.remove("hide");
+  $("#bc-fallback")?.remove();                    // never stack fallbacks
   $("#scanstatus").textContent = "Starting camera…";
   try{
     stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}});
@@ -395,14 +449,23 @@ async function startScan(){
       zx.decodeFromVideoElement($("#video"), (r)=>{ if(r) onBarcode(r.getText()); });
     } else { $("#scanstatus").textContent = "No barcode reader available — add manually."; }
   }catch(e){
-    $("#scanstatus").innerHTML = "Camera unavailable here. <b>Type a barcode instead:</b>";
+    // no camera (desktop / denied permission) — hide the dead black box, offer typing
+    $("#video").classList.add("hide");
+    $("#btn-scanstop").classList.add("hide");
+    $("#scanstatus").innerHTML = "No camera here — <b>type the barcode instead:</b>";
     $("#scanbox").insertAdjacentHTML("beforeend",
-      `<div class="row"><input class="field" id="bc-manual" placeholder="e.g. 0049000042566"><button class="btn sm" onclick="onBarcode($('#bc-manual').value.trim())">Look up</button></div>`);
+      `<div id="bc-fallback" class="row" style="margin-top:8px">
+         <input class="field" id="bc-manual" inputmode="numeric" placeholder="e.g. 0049000042566" style="margin:0">
+         <button class="btn sm" id="bc-go" style="white-space:nowrap">Look up</button>
+       </div>`);
+    $("#bc-go").onclick = () => onBarcode($("#bc-manual").value.trim());
+    $("#bc-manual").onkeydown = ev => { if(ev.key==="Enter") $("#bc-go").click(); };
   }
 }
 function stopScan(){
   if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
   if(zx){ try{zx.reset()}catch(e){} zx=null; }
+  $("#bc-fallback")?.remove();
   $("#scanbox").classList.add("hide");
 }
 async function onBarcode(code){
@@ -498,19 +561,31 @@ function parseReceipt(text){
   if(!LINES.length) toast("Couldn't read any line items — try a flatter, brighter photo");
 }
 
+const EXPANDED = new Set();
+function whoLabel(l, mem){
+  if(l.who.length === mem.length) return `split ${mem.length} ways · everyone`;
+  const names = l.who.map(w => (mem.find(m=>m.id===w)||{name:"?"}).name.split(" ")[0]);
+  return `split ${l.who.length} ${l.who.length===1?'way':'ways'} · ${names.join(", ")}`;
+}
 function renderLines(){
   const mem = H().members;
   $("#lines").innerHTML = LINES.map(l=>`
     <div>
       <div class="line ${l.split?'on':'off'}" data-id="${l.id}">
         <div class="chk" onclick="toggleLine('${l.id}')">${l.split?'✓':''}</div>
-        <div class="lname"><input value="${l.name.replace(/"/g,'&quot;')}" oninput="renameLine('${l.id}',this.value)"></div>
+        <div class="lname"><input value="${l.name.replace(/"/g,'&quot;')}" oninput="renameLine('${l.id}',this.value)" aria-label="item name"></div>
         <div class="lprice">${money(l.price)}</div>
       </div>
-      ${l.split ? `<div class="who">${mem.map(m=>`<button class="${l.who.includes(m.id)?'on':''}" onclick="toggleWho('${l.id}','${m.id}')">${m.name.split(" ")[0]}</button>`).join("")}</div>`:""}
+      ${l.split ? `
+        <button class="whosum" onclick="toggleExpand('${l.id}')">${whoLabel(l, mem)} <span style="opacity:.6">${EXPANDED.has(l.id)?'▲':'▾'}</span></button>
+        ${EXPANDED.has(l.id) ? `<div class="who">${mem.map(m=>`<button class="${l.who.includes(m.id)?'on':''}" onclick="toggleWho('${l.id}','${m.id}')">${m.name.split(" ")[0]}</button>`).join("")}</div>`:""}
+      ` : `<div class="whosum" style="color:var(--muted);cursor:default">not split — yours alone</div>`}
     </div>`).join("");
+  const n = LINES.filter(l=>l.split).length;
+  $("#split-count").textContent = `${n} of ${LINES.length} shared`;
   renderSummary();
 }
+function toggleExpand(id){ EXPANDED.has(id) ? EXPANDED.delete(id) : EXPANDED.add(id); renderLines(); }
 function toggleLine(id){ const l=LINES.find(x=>x.id===id); l.split=!l.split; if(l.split&&!l.who.length) l.who=H().members.map(m=>m.id); renderLines(); }
 function renameLine(id,v){ LINES.find(x=>x.id===id).name = v; renderSummary(); }
 function toggleWho(id,uid){
@@ -524,18 +599,39 @@ $("#btn-none").onclick = () => { LINES.forEach(l=>l.split=false); renderLines();
 
 /* split math: shared items divided among their sharers; tax allocated
    proportionally to each person's share of the pre-tax subtotal */
+/* All arithmetic in integer cents. An item that doesn't divide evenly hands the
+   spare cent to a different person each time, and tax is apportioned by the
+   largest-remainder method — so the parts always re-add to the printed total
+   exactly, never $0.01 off. */
 function computeSplit(){
-  const owed = {}; H().members.forEach(m=>owed[m.id]=0);
-  let shared=0, mine=0;
-  LINES.forEach(l=>{
-    if(l.split && l.who.length){ shared += l.price; const each = l.price/l.who.length; l.who.forEach(w=>owed[w]+=each); }
-    else mine += l.price;
+  const ids = H().members.map(m=>m.id);
+  const c = n => Math.round(n*100);
+  const owedC = {}; ids.forEach(i=>owedC[i]=0);
+  let sharedC = 0, mineC = 0;
+
+  LINES.forEach((l, idx) => {
+    const p = c(l.price);
+    if(l.split && l.who.length){
+      sharedC += p;
+      const k = l.who.length, base = Math.floor(p/k), rem = p - base*k;
+      l.who.forEach((w, j) => { owedC[w] = (owedC[w]||0) + base + (((j - idx % k + k) % k) < rem ? 1 : 0); });
+    } else mineC += p;
   });
-  const sub = shared + mine;
-  const tax = RCPT.tax || 0;
-  if(sub>0 && tax>0) Object.keys(owed).forEach(k => owed[k] += tax * (owed[k]/sub));
-  const taxMine = sub>0 ? tax*(mine/sub) : 0;
-  return { owed, shared, mine, tax, taxMine, grand: sub+tax };
+
+  const subC = sharedC + mineC, taxC = c(RCPT.tax || 0);
+  let taxMineC = 0;
+  if(subC > 0 && taxC > 0){
+    const parts = [...ids.map(i=>({key:i, base:owedC[i]})), {key:"__unshared", base:mineC}]
+      .map(p => { const v = taxC*p.base/subC; return {...p, v, f:Math.floor(v)}; });
+    let left = taxC - parts.reduce((a,p)=>a+p.f, 0);
+    parts.sort((a,b) => (b.v-b.f) - (a.v-a.f));
+    parts.forEach((p,n) => { const got = p.f + (n < left ? 1 : 0);
+      if(p.key === "__unshared") taxMineC = got; else owedC[p.key] += got; });
+  }
+
+  const owed = {}; ids.forEach(i => owed[i] = owedC[i]/100);
+  return { owed, shared:sharedC/100, mine:mineC/100, tax:taxC/100,
+           taxMine:taxMineC/100, grand:(subC+taxC)/100 };
 }
 function renderSummary(){
   const s = computeSplit(), mem = H().members;
@@ -602,27 +698,52 @@ function renderSpend(){
   const trips = H().trips, mem = H().members;
   const houseTotal = trips.reduce((a,t)=>a+t.total,0);
   const myShare = trips.reduce((a,t)=>a+(t.owed[me.id]||0),0);
-  $("#s-house").textContent = money(houseTotal).replace(/\.\d\d$/,"");
-  $("#s-me").textContent    = money(myShare).replace(/\.\d\d$/,"");
+  const compact = n => n >= 1000 ? "$" + Math.round(n).toLocaleString() : money(n);
+  $("#s-house").textContent = compact(houseTotal);
+  $("#s-me").textContent    = compact(myShare);
   $("#s-trips").textContent = trips.length;
+
+  /* month-by-month — the actual "track spending over time" bit */
+  const months = {};
+  trips.forEach(t=>{ const d=new Date(t.at), k=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
+    months[k] = months[k] || {label:d.toLocaleDateString(undefined,{month:"short"}), house:0, mine:0};
+    months[k].house += t.total; months[k].mine += (t.owed[me.id]||0); });
+  const keys = Object.keys(months).sort().slice(-6);
+  const mmax = Math.max(1, ...keys.map(k=>months[k].house));
+  $("#spend-months").innerHTML = keys.length ? `
+    <div style="display:flex;gap:8px;align-items:flex-end;height:96px;margin-top:10px">
+      ${keys.map(k=>`<div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:5px">
+        <span class="sub" style="font-size:10.5px;font-variant-numeric:tabular-nums">${compact(months[k].house)}</span>
+        <div style="width:100%;background:#efece4;border-radius:6px 6px 0 0;height:${Math.max(4,months[k].house/mmax*62)}px;position:relative;overflow:hidden">
+          <div style="position:absolute;bottom:0;left:0;right:0;background:var(--accent);height:${months[k].house?months[k].mine/months[k].house*100:0}%"></div>
+        </div>
+        <span class="sub" style="font-size:11px">${months[k].label}</span></div>`).join("")}
+    </div>
+    <p class="sub" style="margin-top:8px;font-size:11.5px"><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:var(--accent);vertical-align:-1px"></span> your share · <span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#efece4;vertical-align:-1px"></span> the rest of the house</p>`
+    : `<div class="empty" style="padding:16px"><span class="big">📈</span>Log a trip and your monthly spend shows up here.</div>`;
 
   const paid = {}, share = {};
   mem.forEach(m=>{paid[m.id]=0; share[m.id]=0});
   trips.forEach(t=>{ paid[t.payer]=(paid[t.payer]||0)+t.total; Object.entries(t.owed).forEach(([u,v])=>share[u]=(share[u]||0)+v); });
-  const max = Math.max(1, ...Object.values(paid));
+  const max = Math.max(1, ...Object.values(paid), ...Object.values(share));
   $("#spend-people").innerHTML = mem.map(m=>`
-    <div style="margin-bottom:11px">
-      <div class="totrow" style="padding:0"><span>${m.name}${m.id===me.id?' (you)':''}</span>
-        <span><b>${money(paid[m.id]||0)}</b> <span class="sub">paid · ${money(share[m.id]||0)} owed</span></span></div>
+    <div style="margin-bottom:13px">
+      <div style="font-size:13.5px;font-weight:600">${m.name}${m.id===me.id?' <span class="sub" style="font-weight:500">(you)</span>':''}</div>
+      <div class="sub" style="font-size:11.5px;margin:1px 0 2px">fronted <b style="color:var(--ink)">${money(paid[m.id]||0)}</b> · consumed <b style="color:var(--ink)">${money(share[m.id]||0)}</b></div>
       <div class="bar"><i style="width:${(paid[m.id]||0)/max*100}%"></i></div>
-    </div>`).join("");
+      <div class="bar" style="margin-top:3px;height:5px"><i style="width:${(share[m.id]||0)/max*100}%;background:var(--muted);opacity:.45"></i></div>
+    </div>`).join("") +
+    `<p class="sub" style="font-size:11.5px">Top bar is what they paid at the register, bottom is what they actually used. Someone whose top bar keeps running short is quietly being carried.</p>`;
 
-  $("#history").innerHTML = trips.length ? trips.map(t=>`
+  $("#history").innerHTML = trips.length ? [...trips].sort((a,b)=>b.at-a.at).map(t=>`
     <div class="itemrow" style="cursor:pointer" onclick="tripDetail('${t.id}')">
       <div class="thumb">🧾</div>
-      <div style="flex:1"><div class="iname">${new Date(t.at).toLocaleDateString(undefined,{month:"short",day:"numeric"})} · ${t.items.length} items</div>
-        <div class="imeta">${t.payerName} paid · ${money(t.shared)} shared ${t.settled?'· <span style="color:var(--accent)">settled</span>':''}</div></div>
-      <div class="lprice">${money(t.total)}</div>
+      <div style="flex:1;min-width:0">
+        <div class="iname">${new Date(t.at).toLocaleDateString(undefined,{month:"short",day:"numeric"})} · ${t.items.length} item${t.items.length===1?'':'s'}</div>
+        <div class="imeta">${t.payerName.split(" ")[0]} paid · ${money(t.shared)} shared</div></div>
+      <div style="text-align:right;flex:0 0 auto">
+        <div class="lprice">${money(t.total)}</div>
+        ${t.settled?'<div class="sub" style="font-size:10.5px;color:var(--accent);font-weight:600">settled</div>':''}</div>
     </div>`).join("") : `<div class="empty"><span class="big">🧾</span>No trips yet. Scan a receipt to start tracking.</div>`;
 }
 function tripDetail(id){
@@ -673,7 +794,7 @@ window.onload = initAuth;
 route();
 
 /* expose for inline handlers */
-Object.assign(window,{signIn,closeSheet,addManual,delItem,toggleLine,toggleWho,renameLine,switchHouse,leaveToGate,markSettled,tripDetail,onBarcode,$});
+Object.assign(window,{signIn,closeSheet,addManual,delItem,toggleLine,toggleWho,renameLine,toggleExpand,signOut,switchHouse,leaveToGate,markSettled,tripDetail,onBarcode,$});
 </script>
 </body>
 </html>
