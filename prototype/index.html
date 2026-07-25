@@ -178,6 +178,17 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
   </div>
 </section>
 
+<!-- ══════════════ WAITING FOR APPROVAL ══════════════ -->
+<section id="waiting" class="center hide" data-ref="waiting-screen">
+  <div class="hero" style="max-width:340px">
+    <div class="mark" style="background:var(--accent-soft);color:var(--accent)">⏳</div>
+    <h1 style="font-size:21px">Waiting to be let in</h1>
+    <p class="sub" id="waiting-note" style="margin:9px 0 18px"></p>
+    <button class="btn" id="btn-recheck" data-ref="recheck-btn">Check again</button>
+    <button class="btn ghost" id="btn-cancel-req" style="margin-top:8px">Cancel request</button>
+  </div>
+</section>
+
 <!-- ══════════════ APP ══════════════ -->
 <div id="app" class="hide">
   <header class="topbar">
@@ -192,6 +203,7 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
   <main class="wrap">
     <!-- ── PANTRY ── -->
     <section id="tab-pantry" data-ref="pantry-tab">
+      <div id="approvals" class="hide" data-ref="join-requests"></div>
       <div class="card">
         <h2>Add groceries</h2>
         <p class="sub">Scan a barcode and we'll pull the name, size and photo automatically.</p>
@@ -392,8 +404,24 @@ function signIn(p){
   // if they already belong to a house, walk straight back into it
   const mine = Object.values(houses).find(h => h.members.some(m => m.id === p.id));
   if(mine) cur = mine.code;
+  // otherwise, pick up a join request they left pending
+  else {
+    const waiting = Object.values(houses).find(h => (h.pending||[]).some(r => r.id === p.id));
+    if(waiting) pendingCode = waiting.code;
+  }
   save(); route();
 }
+
+/* houses created before approvals existed: the first member is the admin */
+function migrateHouses(){
+  let changed = false;
+  Object.values(houses).forEach(h => {
+    if(!h.pending){ h.pending = []; changed = true; }
+    if(!h.adminId && h.members?.length){ h.adminId = h.members[0].id; changed = true; }
+  });
+  if(changed) save();
+}
+migrateHouses();
 
 /* ═══════════ 2. HOUSEHOLD ═══════════ */
 const CODE_WORDS = ["MAPLE","CEDAR","ORCHID","HARBOR","WILLOW","JUNIPER"];
@@ -404,28 +432,88 @@ function newCode(){
 $("#btn-create").onclick = () => {
   const name = $("#new-house").value.trim() || "My house";
   const code = newCode();
-  houses[code] = { code, name, pantry:[], trips:[],
+  houses[code] = { code, name, adminId: me.id, pantry:[], trips:[], pending:[],
     members:[{...me, venmo: me.venmo||""}] };
   cur = code; save(); route();
   toast("House created — code " + code);
 };
+
+/* Joining is a REQUEST. Only the member who created the house can approve it,
+   so a guessed code gets you a pending row, not somebody's grocery history. */
 $("#btn-join").onclick = () => {
   const code = $("#join-code").value.trim().toUpperCase();
-  if(!houses[code]) return toast("No house with that code");
-  if(!houses[code].members.some(m=>m.id===me.id)) houses[code].members.push({...me, venmo:me.venmo||""});
-  cur = code; save(); route(); toast("Joined " + houses[code].name);
+  const h = houses[code];
+  if(!h) return toast("No house with that code");
+  if(h.members.some(m=>m.id===me.id)){ cur = code; save(); route(); return toast("Welcome back"); }
+  h.pending = h.pending || [];
+  if(!h.pending.some(r=>r.id===me.id)){
+    h.pending.push({ id:me.id, name:me.name, email:me.email, pic:me.pic||"", at:Date.now() });
+  }
+  save(); pendingCode = code; route();
+  toast("Request sent");
 };
+
+/* ── approvals ── */
+const isAdmin  = h => h && h.adminId === me?.id;
+const adminOf  = h => (h?.members || []).find(m => m.id === h.adminId) || {name:"the house admin"};
+let pendingCode = null;                       // house we're waiting on, if any
+
+function approveJoin(code, uid){
+  const h = houses[code]; if(!isAdmin(h)) return toast("Only the house admin can approve");
+  const r = (h.pending||[]).find(x=>x.id===uid); if(!r) return;
+  h.pending = h.pending.filter(x=>x.id!==uid);
+  if(!h.members.some(m=>m.id===uid)) h.members.push({ ...r, venmo:"" });
+  save(); render(); closeSheet(); toast(`${r.name.split(" ")[0]} is in`);
+}
+function denyJoin(code, uid){
+  const h = houses[code]; if(!isAdmin(h)) return toast("Only the house admin can approve");
+  const r = (h.pending||[]).find(x=>x.id===uid);
+  h.pending = (h.pending||[]).filter(x=>x.id!==uid);
+  save(); render(); closeSheet(); toast(r ? `Declined ${r.name.split(" ")[0]}` : "Declined");
+}
+function cancelRequest(){
+  const h = houses[pendingCode];
+  if(h) h.pending = (h.pending||[]).filter(x=>x.id!==me.id);
+  pendingCode = null; save(); route();
+}
+function recheckRequest(){
+  const h = houses[pendingCode];
+  if(h && h.members.some(m=>m.id===me.id)){ cur = pendingCode; pendingCode = null; save(); route(); toast("You're in!"); }
+  else if(h && !(h.pending||[]).some(r=>r.id===me.id)){ pendingCode = null; save(); route(); toast("That request was declined"); }
+  else toast("Still waiting on " + adminOf(h).name.split(" ")[0]);
+}
+
+function renderApprovals(){
+  const h = H(), box = $("#approvals");
+  const reqs = (isAdmin(h) ? (h.pending||[]) : []);
+  box.classList.toggle("hide", reqs.length === 0);
+  if(!reqs.length) return;
+  box.innerHTML = `<div class="card" style="border-color:var(--accent)">
+    <div class="row"><h2 style="flex:1">${reqs.length} ${reqs.length===1?'person wants':'people want'} to join</h2><span class="tag">admin</span></div>
+    <p class="sub" style="margin-bottom:6px">They typed the code. You decide whether they're actually your housemate.</p>
+    ${reqs.map(r=>`<div class="itemrow">
+      <div class="avatar" style="width:40px;height:40px;font-size:14px">${r.pic?`<img src="${r.pic}">`:initials(r.name)}</div>
+      <div style="flex:1;min-width:0"><div class="iname">${r.name}</div><div class="imeta">${r.email||""}</div></div>
+      <button class="btn sm" onclick="approveJoin('${h.code}','${r.id}')" data-ref="approve-btn">Approve</button>
+      <button class="btn ghost sm" onclick="denyJoin('${h.code}','${r.id}')" data-ref="deny-btn">Deny</button>
+    </div>`).join("")}</div>`;
+}
 $("#house-switch").onclick = () => {
   const mine = Object.values(houses).filter(h=>h.members.some(m=>m.id===me.id));
   sheet(`<h2>Your households</h2><p class="sub" style="margin-bottom:8px">Spending is tracked separately for each.</p>` +
     mine.map(h=>`<div class="itemrow" style="cursor:pointer" onclick="switchHouse('${h.code}')">
       <div class="thumb" style="font-size:20px">🏠</div>
       <div style="flex:1"><div class="iname">${h.name} ${h.code===cur?'<span class="tag">current</span>':''}</div>
-      <div class="imeta">${h.members.length} housemates · code <b>${h.code}</b> · ${h.trips.length} trips</div></div></div>`).join("") +
+      <div class="imeta">${h.members.length} housemates · code <b>${h.code}</b> · ${h.trips.length} trips${(h.pending||[]).length && isAdmin(h) ? ` · <span style="color:var(--warn)"><b>${h.pending.length}</b> waiting</span>`:''}</div></div></div>`).join("") +
     `<button class="btn ghost" style="margin-top:12px" onclick="closeSheet();leaveToGate()">+ Join or create another house</button>
      <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px">
+       <h2 style="font-size:14px">Housemates</h2>
+       <p class="sub" style="margin-bottom:6px">${adminOf(H()).name}${isAdmin(H())?' (you)':''} set this house up, so ${isAdmin(H())?'you approve':'they approve'} anyone who asks to join.</p>
+       ${H().members.map(m=>`<div class="totrow"><span>${m.name}${m.id===H().adminId?' <span class="tag" style="font-size:9.5px">admin</span>':''}</span><span class="sub">${m.id===me.id?'you':''}</span></div>`).join("")}
+     </div>
+     <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px">
        <h2 style="font-size:14px">Invite your housemates</h2>
-       <p class="sub">Send them this code — they pick “Join house” after signing in with Google.</p>
+       <p class="sub">Send them this code. They'll ask to join, and ${isAdmin(H())?'you':'the admin'} approves them.</p>
        <div class="field" style="text-align:center;font-size:24px;font-weight:800;letter-spacing:.18em;color:var(--accent);font-family:ui-monospace,monospace">${cur}</div>
        <div class="row"><button class="btn" id="btn-copy" data-ref="copy-code-btn">Copy code</button><button class="btn ghost" id="btn-share">Share</button></div>
      </div>
@@ -804,14 +892,24 @@ function render(){
         <div class="imeta">${[i.brand,i.size].filter(Boolean).join(" · ")||"added manually"} · by ${i.by.split(" ")[0]}</div></div>
       <button class="x" onclick="delItem('${i.id}')">×</button>
     </div>`).join("") : `<div class="empty"><span class="big">🥑</span>Nothing in the pantry yet.<br>Scan a barcode to pull in the photo automatically.</div>`;
-  renderSettle(); renderSpend();
+  renderApprovals(); renderSettle(); renderSpend();
 }
+$("#btn-recheck").onclick    = recheckRequest;
+$("#btn-cancel-req").onclick = cancelRequest;
 function route(){
-  const signed = !!me, housed = signed && cur && houses[cur];
+  const signed  = !!me;
+  const housed  = signed && cur && houses[cur] && houses[cur].members.some(m=>m.id===me.id);
+  const waiting = signed && !housed && pendingCode && houses[pendingCode];
   $("#signin").classList.toggle("hide", signed);
-  $("#housegate").classList.toggle("hide", !signed || !!housed);
+  $("#waiting").classList.toggle("hide", !waiting);
+  $("#housegate").classList.toggle("hide", !signed || !!housed || !!waiting);
   $("#app").classList.toggle("hide", !housed);
-  if(signed && !housed){
+  if(waiting){
+    const h = houses[pendingCode];
+    $("#waiting-note").innerHTML =
+      `Your request to join <b>${h.name}</b> (${h.code}) is sitting with <b>${adminOf(h).name}</b>, who set the house up. They'll see it next time they open HouseCart.`;
+  }
+  if(signed && !housed && !waiting){
     const mine = Object.values(houses).filter(h=>h.members.some(m=>m.id===me.id));
     $("#mine").innerHTML = mine.length ? "Your houses: " + mine.map(h=>`<a href="#" onclick="switchHouse('${h.code}');route();return false"><b>${h.name}</b> (${h.code})</a>`).join(", ") : "";
   }
@@ -821,7 +919,7 @@ window.onload = initAuth;
 route();
 
 /* expose for inline handlers */
-Object.assign(window,{signIn,closeSheet,addManual,delItem,toggleLine,toggleWho,renameLine,toggleExpand,signOut,switchHouse,leaveToGate,markSettled,tripDetail,onBarcode,$});
+Object.assign(window,{signIn,closeSheet,approveJoin,denyJoin,cancelRequest,recheckRequest,isAdmin,addManual,delItem,toggleLine,toggleWho,renameLine,toggleExpand,signOut,switchHouse,leaveToGate,markSettled,tripDetail,onBarcode,$});
 </script>
 </body>
 </html>
