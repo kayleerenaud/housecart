@@ -1,79 +1,38 @@
 rules_version = '2';
-
-/*
-  HouseCart security rules.
-
-  These run on Google's servers, so unlike the checks in the app they cannot be
-  bypassed by anyone poking at the browser console. Two things they guarantee:
-
-    1. A house's contents — pantry, receipts, balances — are readable ONLY by
-       people already in that house. A guessed code gets you nothing.
-    2. Only the house's admin (whoever created it) can change who is a member.
-       That is Kaylee's approval decision, enforced rather than requested.
-*/
-
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function signedIn() {
-      return request.auth != null;
-    }
+    function signedIn() { return request.auth != null; }
+    function house(code) { return get(/databases/$(database)/documents/houses/$(code)).data; }
+    function isMember(code) { return signedIn() && request.auth.uid in house(code).memberIds; }
+    function isAdmin(code) { return signedIn() && request.auth.uid == house(code).adminId; }
 
-    function house(code) {
-      return get(/databases/$(database)/documents/houses/$(code)).data;
-    }
-    function isMember(code) {
-      return signedIn() && request.auth.uid in house(code).memberIds;
-    }
-    function isAdmin(code) {
-      return signedIn() && request.auth.uid == house(code).adminId;
-    }
-
-    /* ── Public-ish code directory ───────────────────────────────────────
-       Lets someone who types a code learn ONLY the house's name and who
-       admins it, so the waiting screen can say "your request is with Kaylee".
-       Nothing about members, spending or groceries lives here.            */
     match /houseCodes/{code} {
-      allow read:   if signedIn();
-      allow create: if signedIn()
-                    && request.resource.data.adminId == request.auth.uid
-                    && request.resource.data.keys().hasOnly(['name','adminId','adminName','createdAt']);
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.adminId == request.auth.uid;
       allow update, delete: if isAdmin(code);
     }
 
-    /* ── The house itself ─────────────────────────────────────────────── */
     match /houses/{code} {
       allow read: if isMember(code);
-
-      // creating a house: you must be its admin and its only member
       allow create: if signedIn()
-                    && request.resource.data.adminId == request.auth.uid
-                    && request.resource.data.memberIds == [request.auth.uid];
-
-      // members may edit house data (name, their own venmo handle, etc.)
-      // but ONLY the admin may change the membership list
+        && request.resource.data.adminId == request.auth.uid
+        && request.resource.data.memberIds.size() == 1
+        && request.auth.uid in request.resource.data.memberIds;
       allow update: if isMember(code)
-                    && (request.resource.data.memberIds == resource.data.memberIds
-                        || request.auth.uid == resource.data.adminId)
-                    && request.resource.data.adminId == resource.data.adminId;
-
+        && request.resource.data.adminId == resource.data.adminId
+        && (request.resource.data.memberIds == resource.data.memberIds
+            || request.auth.uid == resource.data.adminId);
       allow delete: if isAdmin(code);
 
-      /* ── Join requests ──────────────────────────────────────────────
-         Anyone signed in can ask to join (that's the point of a code),
-         but a request grants no read access to anything else. You can see
-         and cancel your own; the admin can see and clear any.           */
       match /joinRequests/{uid} {
-        allow create: if signedIn() && uid == request.auth.uid
-                      && request.resource.data.id == request.auth.uid;
-        allow read, delete: if signedIn()
-                      && (uid == request.auth.uid || isAdmin(code));
+        allow create: if signedIn() && uid == request.auth.uid;
+        allow read, delete: if signedIn() && (uid == request.auth.uid || isAdmin(code));
       }
 
-      /* ── House contents: members only, full stop ─────────────────── */
-      match /pantry/{item}   { allow read, write: if isMember(code); }
-      match /trips/{trip}    { allow read, write: if isMember(code); }
-      match /payments/{pay}  { allow read, write: if isMember(code); }
+      match /pantry/{item} { allow read, write: if isMember(code); }
+      match /trips/{trip} { allow read, write: if isMember(code); }
+      match /payments/{pay} { allow read, write: if isMember(code); }
     }
   }
 }
