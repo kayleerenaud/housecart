@@ -54,8 +54,9 @@ ok((await p.textContent('#acct-name')).includes('Kaylee'), 'it shows who you are
 console.log('\n=== vibe profiles ===');
 const vibes = await p.$$eval('[data-vibe-pick]', els=>els.map(e=>e.dataset.vibePick));
 console.log('   available:', vibes.join(', '));
-ok(vibes.length >= 5, 'several vibes to choose from');
-for(const v of ['midnight','market','sorbet']){
+ok(vibes.length === 6, 'six vibes to choose from');
+ok(['minimal','y2k','seventies','earthy','comic','steampunk'].every(v=>vibes.includes(v)), 'all six requested vibes are present');
+for(const v of ['comic','seventies','steampunk']){
   await p.click(`[data-vibe-pick="${v}"]`); await p.waitForTimeout(250);
   const st = await p.evaluate(()=>({attr:document.documentElement.getAttribute('data-vibe'),
     bg:getComputedStyle(document.body).backgroundColor,
@@ -65,9 +66,24 @@ for(const v of ['midnight','market','sorbet']){
 }
 await p.reload({waitUntil:'networkidle'});
 await p.waitForTimeout(500);
-ok(await p.evaluate(()=>document.documentElement.getAttribute('data-vibe')==='sorbet'), 'the chosen vibe survives a reload');
-await p.evaluate(()=>setVibe('crisp')); await p.waitForTimeout(200);
-ok(await p.evaluate(()=>!document.documentElement.hasAttribute('data-vibe')), 'Crisp resets to the default');
+ok(await p.evaluate(()=>document.documentElement.getAttribute('data-vibe')==='steampunk'), 'the chosen vibe survives a reload');
+
+console.log('\n=== sub-variants ===');
+await p.click('[data-ref="me-avatar"]'); await p.waitForTimeout(300);
+await p.evaluate(()=>setVibe('minimal')); await p.waitForTimeout(300);
+ok(await p.isVisible('[data-ref="variant-seg"]'), 'Minimal offers a light/dark toggle');
+await p.click('[data-variant-pick="dark"]'); await p.waitForTimeout(300);
+const md = await p.evaluate(()=>({v:document.documentElement.getAttribute('data-variant'),bg:getComputedStyle(document.body).backgroundColor}));
+console.log('   minimal dark bg:', md.bg);
+ok(md.v==='dark', 'Minimal · Dark applies');
+await p.evaluate(()=>setVibe('y2k')); await p.waitForTimeout(300);
+ok(await p.isVisible('[data-variant-pick="blue"]'), 'Y2K offers a pink/blue toggle');
+await p.click('[data-variant-pick="blue"]'); await p.waitForTimeout(300);
+const yb = await p.evaluate(()=>getComputedStyle(document.documentElement).getPropertyValue('--tint').trim());
+console.log('   y2k blue tint:', yb);
+ok(yb.toLowerCase()==='#0052ff', 'Y2K · Blue swaps the accent to blue');
+await p.evaluate(()=>setVibe('comic')); await p.waitForTimeout(300);
+ok(!(await p.isVisible('[data-ref="variant-seg"]')), 'a vibe without variants shows no toggle');
 
 console.log('\n=== profile picture ===');
 await p.evaluate(()=>signIn({id:'u1',name:'Kaylee Renaud',email:'k@x.com',pic:'',googlePic:'https://example.com/g.jpg',venmo:'kaylee-r'}));

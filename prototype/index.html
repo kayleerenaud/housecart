@@ -52,8 +52,8 @@
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0;height:100%;overflow:hidden;overscroll-behavior:none}
 body{background:var(--bg);color:var(--label);
-  font:17px/1.32 -apple-system,"SF Pro Text",system-ui,"Segoe UI",Roboto,sans-serif;
-  letter-spacing:-.4px;-webkit-font-smoothing:antialiased}
+  font:17px/1.32 var(--font-ui,-apple-system,"SF Pro Text",system-ui,"Segoe UI",Roboto,sans-serif);
+  letter-spacing:var(--track,-.4px);-webkit-font-smoothing:antialiased}
 h1,h2,h3{margin:0;font-weight:700;letter-spacing:-.4px}
 button{font:inherit;letter-spacing:inherit;color:inherit;cursor:pointer;border:0;background:none;padding:0}
 input,select{font:inherit;letter-spacing:inherit;color:inherit}
@@ -65,51 +65,165 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em}
 .wrap{max-width:520px;margin:0 auto;padding:0 var(--inset)}
 
 
-/* ══ Vibe profiles ══ Each is a full token set; a person picks one on their
-   Account page and it's remembered on their device. "crisp" is the default and
-   follows the system light/dark setting. */
-html[data-vibe="market"]{
-  --bg:#F4F1EA; --surface:#FFFDF8; --surface-2:rgba(140,125,100,.14);
-  --material:rgba(250,247,240,.86);
-  --label:#241F17; --label-2:rgba(70,60,45,.66); --label-3:rgba(70,60,45,.34);
-  --separator:rgba(120,105,80,.28);
-  --tint:#2F7D55; --tint-soft:rgba(47,125,85,.13); --on-tint:#fff;
-  --positive:#2F7D55; --negative:#A8412A; --warning:#B06A1F;
+/* ══════════════════════════════════════════════════════════════════════════
+   VIBES — six complete looks. Each sets colour, type, geometry, background art
+   and grain. The layout underneath never changes; only the skin does.
+   Every text/background pair is contrast-checked by verify-vibes.mjs.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── 1. MINIMAL ─ warm greys, hairline art, huge air. light | dark ────────── */
+html[data-vibe="minimal"]{
+  --bg:#F7F6F4; --surface:#FFFFFF; --surface-2:rgba(30,26,22,.06);
+  --material:rgba(247,246,244,.86);
+  --label:#14120F; --label-2:rgba(20,18,15,.60); --label-3:rgba(20,18,15,.30);
+  --separator:rgba(20,18,15,.13);
+  --tint:#2E2A25; --tint-soft:rgba(46,42,37,.07); --on-tint:#FFFFFF;
+  --positive:#2F6B4F; --negative:#8C2F2A; --warning:#8A5A1E;
+  --r-group:4px; --r-button:4px; --r-control:3px; --r-icon:3px; --r-sheet:6px;
+  --font-display:"Jost",-apple-system,system-ui,sans-serif;
+  --font-ui:"Jost",-apple-system,system-ui,sans-serif;
+  --btn-track:.02em;
+  --bgart:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='420' height='420'%3E%3Cpath d='M40 300c60-120 130-40 170-120s120-40 170-110' fill='none' stroke='%23000' stroke-opacity='.055' stroke-width='1.2'/%3E%3C/svg%3E");
+  --bgart-size:420px 420px;
 }
-html[data-vibe="midnight"]{
-  --bg:#0B0D12; --surface:#161A22; --surface-2:rgba(140,155,190,.16);
-  --material:rgba(16,19,26,.82);
-  --label:#EEF1F7; --label-2:rgba(210,220,240,.62); --label-3:rgba(210,220,240,.32);
-  --separator:rgba(150,165,200,.24);
-  --tint:#7C8CFF; --tint-soft:rgba(124,140,255,.18); --on-tint:#0B0D12;
-  --positive:#5BD6A0; --negative:#FF6B7A; --warning:#F2B44C;
-  --shadow-sheet:0 -8px 40px rgba(0,0,0,.65);
+html[data-vibe="minimal"] body,html[data-vibe="minimal"] .iname,html[data-vibe="minimal"] .lname input{font-weight:350}
+html[data-vibe="minimal"] .ltitle{font-weight:300;letter-spacing:.01em}
+html[data-vibe="minimal"][data-variant="dark"]{
+  --bg:#100F0E; --surface:#1A1917; --surface-2:rgba(245,243,239,.09);
+  --material:rgba(16,15,14,.84);
+  --label:#F6F4F0; --label-2:rgba(246,244,240,.62); --label-3:rgba(246,244,240,.30);
+  --separator:rgba(246,244,240,.16);
+  --tint:#EFEBE4; --tint-soft:rgba(239,235,228,.12); --on-tint:#100F0E;
+  --positive:#7FCFA4; --negative:#F08A80; --warning:#E3B469;
+  --bgart:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='420' height='420'%3E%3Cpath d='M40 300c60-120 130-40 170-120s120-40 170-110' fill='none' stroke='%23fff' stroke-opacity='.07' stroke-width='1.2'/%3E%3C/svg%3E");
 }
-html[data-vibe="sorbet"]{
-  --bg:#FDF2F4; --surface:#FFFFFF; --surface-2:rgba(190,120,140,.13);
-  --material:rgba(255,246,248,.85);
-  --label:#2C1E24; --label-2:rgba(90,60,72,.64); --label-3:rgba(90,60,72,.32);
-  --separator:rgba(160,110,130,.26);
-  --tint:#C2417A; --tint-soft:rgba(194,65,122,.12); --on-tint:#fff;
-  --positive:#2E9E77; --negative:#C2417A; --warning:#C97B1E;
+
+/* ── 2. Y2K ─ pixel type, halftone, chrome. pink | blue ──────────────────── */
+html[data-vibe="y2k"]{
+  --track:0px;
+  --bg:#FFE6F7; --surface:#FFFFFF; --surface-2:rgba(229,0,122,.10);
+  --material:rgba(255,230,247,.88);
+  --label:#1B0140; --label-2:rgba(27,1,64,.66); --label-3:rgba(27,1,64,.34);
+  --separator:rgba(229,0,122,.28);
+  --tint:#D6006E; --tint-soft:rgba(214,0,110,.12); --on-tint:#FFFFFF;
+  --positive:#00806A; --negative:#C7003C; --warning:#9A5B00;
+  --r-group:14px; --r-button:999px; --r-control:999px; --r-icon:8px; --r-sheet:18px;
+  --font-display:"Press Start 2P",monospace;
+  --font-ui:"Space Grotesk",-apple-system,system-ui,sans-serif;
+  --card-border:2px solid rgba(27,1,64,.14);
+  --btn-shadow:0 3px 0 rgba(27,1,64,.28);
+  --bgart:
+    radial-gradient(circle at 12% 10%, rgba(0,229,255,.30) 0 22%, transparent 60%),
+    radial-gradient(circle at 88% 4%, rgba(182,255,61,.30) 0 18%, transparent 58%),
+    radial-gradient(circle at 78% 92%, rgba(255,214,0,.28) 0 20%, transparent 60%);
+  --bgtex:radial-gradient(rgba(214,0,110,.20) 1.1px, transparent 1.2px);
+  --bgtex-size:9px 9px; --bgtex-op:.5;
 }
-html[data-vibe="mono"]{
-  --bg:#EDEDED; --surface:#FFFFFF; --surface-2:rgba(0,0,0,.07);
-  --material:rgba(248,248,248,.86);
-  --label:#000; --label-2:rgba(0,0,0,.56); --label-3:rgba(0,0,0,.3);
-  --separator:rgba(0,0,0,.2);
-  --tint:#111; --tint-soft:rgba(0,0,0,.08); --on-tint:#fff;
-  --positive:#111; --negative:#8A0F1A; --warning:#7A4A00;
+html[data-vibe="y2k"] .ltitle{font-size:26px;line-height:34px;letter-spacing:0}
+html[data-vibe="y2k"] .sheet h2,html[data-vibe="y2k"] .card h2{font-size:14px;line-height:22px}
+html[data-vibe="y2k"] .bignum{font-size:22px;line-height:32px}
+html[data-vibe="y2k"][data-variant="blue"]{
+  --bg:#DFF1FF; --surface-2:rgba(0,82,255,.10);
+  --material:rgba(223,241,255,.88);
+  --label:#04104A; --label-2:rgba(4,16,74,.66); --label-3:rgba(4,16,74,.34);
+  --separator:rgba(0,82,255,.28);
+  --tint:#0052FF; --tint-soft:rgba(0,82,255,.12);
+  --btn-shadow:0 3px 0 rgba(4,16,74,.28);
+  --bgart:
+    radial-gradient(circle at 12% 10%, rgba(255,0,170,.24) 0 22%, transparent 60%),
+    radial-gradient(circle at 88% 4%, rgba(0,229,255,.34) 0 18%, transparent 58%),
+    radial-gradient(circle at 78% 92%, rgba(182,255,61,.28) 0 20%, transparent 60%);
+  --bgtex:radial-gradient(rgba(0,82,255,.20) 1.1px, transparent 1.2px);
 }
-html[data-vibe="forest"]{
-  --bg:#0F1511; --surface:#18211B; --surface-2:rgba(150,190,160,.15);
-  --material:rgba(15,21,17,.84);
-  --label:#EAF2EC; --label-2:rgba(210,230,215,.62); --label-3:rgba(210,230,215,.3);
-  --separator:rgba(150,190,160,.22);
-  --tint:#7BD88F; --tint-soft:rgba(123,216,143,.16); --on-tint:#0F1511;
-  --positive:#7BD88F; --negative:#FF8080; --warning:#E8B667;
-  --shadow-sheet:0 -8px 40px rgba(0,0,0,.6);
+
+/* ── 3. SEVENTIES ─ avocado, mustard, burnt orange; waves and checks ─────── */
+html[data-vibe="seventies"]{
+  --track:0px;
+  --bg:#F0DFBC; --surface:#FFF7E6; --surface-2:rgba(92,60,15,.12);
+  --material:rgba(240,223,188,.88);
+  --label:#2A1A08; --label-2:rgba(42,26,8,.68); --label-3:rgba(42,26,8,.36);
+  --separator:rgba(120,80,25,.30);
+  --tint:#B14A12; --tint-soft:rgba(177,74,18,.13); --on-tint:#FFF7E6;
+  --positive:#4E6B18; --negative:#9C2A16; --warning:#8A5B08;
+  --r-group:18px; --r-button:999px; --r-control:999px; --r-icon:10px; --r-sheet:22px;
+  --font-display:"Alfa Slab One",Georgia,serif;
+  --font-ui:"Karla",-apple-system,system-ui,sans-serif;
+  --card-border:1.5px solid rgba(120,80,25,.22);
+  --bgart:
+    repeating-linear-gradient(45deg, rgba(120,145,40,.16) 0 22px, transparent 22px 44px),
+    repeating-linear-gradient(-45deg, rgba(200,130,20,.13) 0 22px, transparent 22px 44px);
+  --bgtex:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='40'%3E%3Cpath d='M0 20q15-16 30 0t30 0 30 0 30 0' fill='none' stroke='%23a4530f' stroke-opacity='.20' stroke-width='2.5'/%3E%3C/svg%3E");
+  --bgtex-size:120px 40px; --bgtex-op:.55;
 }
+html[data-vibe="seventies"] .ltitle{letter-spacing:-.01em}
+
+/* ── 4. EARTHY ─ terracotta, olive, ochre; linen and clay ────────────────── */
+html[data-vibe="earthy"]{
+  --track:0px;
+  --bg:#EFE2D2; --surface:#FCF6EE; --surface-2:rgba(90,56,34,.11);
+  --material:rgba(239,226,210,.88);
+  --label:#241811; --label-2:rgba(36,24,17,.68); --label-3:rgba(36,24,17,.34);
+  --separator:rgba(120,85,58,.26);
+  --tint:#9C4A22; --tint-soft:rgba(156,74,34,.12); --on-tint:#FCF6EE;
+  --positive:#4F6437; --negative:#8E2F22; --warning:#8A6014;
+  --r-group:16px; --r-button:14px; --r-control:10px; --r-icon:9px; --r-sheet:20px;
+  --font-display:"Fraunces",Georgia,serif;
+  --font-ui:"Karla",-apple-system,system-ui,sans-serif;
+  --card-border:1px solid rgba(120,85,58,.18);
+  --bgart:
+    radial-gradient(ellipse at 15% 0%, rgba(180,120,60,.24) 0 42%, transparent 72%),
+    radial-gradient(ellipse at 90% 100%, rgba(110,125,70,.22) 0 40%, transparent 70%);
+  --bgtex:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='6' height='6'%3E%3Cpath d='M0 0h6M0 3h6' stroke='%236b4a2e' stroke-opacity='.16' stroke-width='.6'/%3E%3Cpath d='M0 0v6M3 0v6' stroke='%236b4a2e' stroke-opacity='.10' stroke-width='.6'/%3E%3C/svg%3E");
+  --bgtex-size:6px 6px; --bgtex-op:.75;
+}
+
+/* ── 5. COMIC ─ primaries, halftone, hard black outlines, burst rays ─────── */
+html[data-vibe="comic"]{
+  --track:0px;
+  --bg:#FFE04A; --surface:#FFFFFF; --surface-2:rgba(11,11,11,.10);
+  --material:rgba(255,224,74,.90);
+  --label:#0B0B0B; --label-2:rgba(11,11,11,.68); --label-3:rgba(11,11,11,.36);
+  --separator:rgba(11,11,11,.55);
+  --tint:#D3002B; --tint-soft:rgba(211,0,43,.12); --on-tint:#FFFFFF;
+  --positive:#00713A; --negative:#D3002B; --warning:#B24A00;
+  --r-group:12px; --r-button:999px; --r-control:999px; --r-icon:7px; --r-sheet:16px;
+  --font-display:"Bangers",Impact,sans-serif;
+  --font-ui:"Nunito",-apple-system,system-ui,sans-serif;
+  --card-border:2.5px solid #0B0B0B;
+  --card-shadow:4px 4px 0 #0B0B0B;
+  --btn-border:2.5px solid #0B0B0B;
+  --btn-shadow:3px 3px 0 #0B0B0B;
+  --bgart:repeating-conic-gradient(from 0deg at 50% 22%, rgba(0,86,214,.20) 0deg 7deg, transparent 7deg 14deg);
+  --bgtex:radial-gradient(#0b0b0b 1.3px, transparent 1.4px);
+  --bgtex-size:11px 11px; --bgtex-op:.14;
+}
+html[data-vibe="comic"] .ltitle{font-size:44px;line-height:46px;letter-spacing:.02em;
+  -webkit-text-stroke:1.5px #0B0B0B;text-shadow:3px 3px 0 rgba(0,0,0,.18)}
+html[data-vibe="comic"] .card h2,html[data-vibe="comic"] .sheet h2{letter-spacing:.03em}
+html[data-vibe="comic"] .tag{border:1.5px solid #0B0B0B}
+
+/* ── 6. STEAMPUNK ─ brass on soot, gears, engraved serif ─────────────────── */
+html[data-vibe="steampunk"]{
+  --track:0px;
+  --bg:#15100B; --surface:#241C13; --surface-2:rgba(214,176,106,.14);
+  --material:rgba(21,16,11,.86);
+  --label:#F4E6CB; --label-2:rgba(244,230,203,.66); --label-3:rgba(244,230,203,.34);
+  --separator:rgba(198,154,78,.34);
+  --tint:#D9A75A; --tint-soft:rgba(217,167,90,.14); --on-tint:#1A130C;
+  --positive:#A9C46C; --negative:#E0654A; --warning:#E0A94A;
+  --r-group:8px; --r-button:8px; --r-control:6px; --r-icon:5px; --r-sheet:10px;
+  --font-display:"Cinzel",Georgia,serif;
+  --font-ui:"Lora",Georgia,serif;
+  --card-border:1px solid rgba(198,154,78,.30);
+  --card-shadow:inset 0 1px 0 rgba(217,167,90,.14);
+  --bgart:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cg fill='none' stroke='%23d9a75a' stroke-opacity='.20' stroke-width='2'%3E%3Ccircle cx='70' cy='70' r='40'/%3E%3Ccircle cx='70' cy='70' r='22'/%3E%3Cg%3E%3Cpath d='M70 22v-12M70 130v-12M22 70h-12M130 70h-12M36 36l-8-8M112 112l8 8M104 36l8-8M36 104l-8 8'/%3E%3C/g%3E%3Ccircle cx='196' cy='188' r='26'/%3E%3Ccircle cx='196' cy='188' r='13'/%3E%3Cpath d='M196 156v-9M196 229v-9M164 188h-9M237 188h-9'/%3E%3C/g%3E%3C/svg%3E"),
+    radial-gradient(ellipse at 50% 0%, rgba(217,167,90,.16) 0 34%, transparent 68%);
+  --bgart-size:260px 260px, 100% 100%;
+  --bgtex:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Cpath d='M0 0h4v4H0z' fill='%23000' fill-opacity='.28'/%3E%3Cpath d='M0 0h2v2H0z' fill='%23d9a75a' fill-opacity='.10'/%3E%3C/svg%3E");
+  --bgtex-size:4px 4px; --bgtex-op:.5;
+}
+html[data-vibe="steampunk"] .ltitle{letter-spacing:.03em}
 
 /* ── swipe-to-delete ── */
 .swipe{position:relative;overflow:hidden}
@@ -130,6 +244,17 @@ html[data-vibe="forest"]{
   color:var(--on-tint);display:grid;place-items:center;font-size:28px;font-weight:600;margin:0 auto}
 .pickpic img{width:100%;height:100%;object-fit:cover}
 
+
+/* Each vibe can paint two fixed layers behind everything: --bgart (pattern or
+   scenery) and --bgtex (a fine grain). Both sit under the content and never
+   intercept taps. */
+body::before,body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0}
+body::before{background:var(--bgart,none);background-size:var(--bgart-size,auto);opacity:var(--bgart-op,1)}
+body::after{background:var(--bgtex,none);background-size:var(--bgtex-size,auto);opacity:var(--bgtex-op,1);mix-blend-mode:var(--bgtex-blend,normal)}
+#app,#signin,#housegate,#waiting,.modal,.toast{position:relative;z-index:1}
+h1,h2,h3,.ltitle,.bignum,.sheet h2,.stat .n{font-family:var(--font-display,inherit)}
+.tag,.sechead,.cathead,.stat .l,.tabbar button{font-family:var(--font-ui,inherit)}
+
 /* ---------- nav ---------- */
 .topbar{flex:0 0 auto;position:relative;z-index:40;background:var(--material);backdrop-filter:blur(20px) saturate(1.8);border-bottom:.5px solid var(--separator)}
 .topbar .wrap{display:flex;align-items:center;gap:10px;height:44px}
@@ -145,12 +270,13 @@ html[data-vibe="forest"]{
 .lsub{font-size:13px;line-height:18px;letter-spacing:0;color:var(--label-2);padding-bottom:14px}
 
 /* ---------- grouped sections ---------- */
-.card{background:var(--surface);border-radius:var(--r-group);padding:2px var(--inset);margin:0 0 24px}
-.card.pad{padding:14px var(--inset)}
+.card{background:var(--surface);border-radius:var(--r-group);padding:2px var(--inset);margin:0 0 20px;
+  border:var(--card-border,0);box-shadow:var(--card-shadow,none)}
+.card.pad{padding:16px var(--inset)}
 .card h2{font-size:17px;line-height:22px;font-weight:600;padding:12px 0 2px}
 .card.pad h2{padding:0}
 .sechead{font-size:12px;line-height:16px;letter-spacing:.05em;text-transform:uppercase;color:var(--label-2);padding:0 var(--inset) 7px}
-.secfoot{font-size:13px;line-height:18px;letter-spacing:0;color:var(--label-2);padding:8px 4px 0;margin:-20px 0 24px}
+.secfoot{font-size:13px;line-height:18px;letter-spacing:0;color:var(--label-2);padding:8px 4px 0;margin:-16px 0 20px}
 .sub{color:var(--label-2);font-size:13px;line-height:18px;letter-spacing:0}
 .row{display:flex;gap:8px;align-items:center}
 .tag{font-size:12px;font-weight:600;letter-spacing:0;padding:2px 7px;border-radius:6px;background:var(--tint-soft);color:var(--tint)}
@@ -160,7 +286,11 @@ html[data-vibe="forest"]{
 .empty b{display:block;font-size:17px;font-weight:600;color:var(--label);letter-spacing:-.4px;margin-bottom:4px}
 
 /* ---------- buttons ---------- */
-.btn{background:var(--tint);color:var(--on-tint);border-radius:var(--r-button);min-height:50px;padding:13px 16px;font-size:17px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;transition:opacity .15s}
+.btn{background:var(--tint);color:var(--on-tint);border-radius:var(--r-button);min-height:50px;padding:13px 16px;
+  font-family:var(--font-ui,inherit);font-size:17px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;
+  gap:8px;width:100%;transition:opacity .15s;border:var(--btn-border,0);box-shadow:var(--btn-shadow,none);letter-spacing:var(--btn-track,inherit)}
+main > .btn, main > section > .btn{margin-bottom:20px}
+.btn + .btn{margin-top:12px}
 .btn:active{opacity:.72}
 .btn.ghost{background:var(--tint-soft);color:var(--tint)}
 .btn.venmo{background:var(--tint)}
@@ -293,7 +423,7 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
           <b>console.cloud.google.com → APIs &amp; Services → Credentials</b>, then paste it into <code>config.js</code> and push.</p>
         <p class="sub" style="margin-bottom:4px"><b>Authorized JavaScript origins</b> must contain exactly these:</p>
         <div id="origins" style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;background:#f3f0e9;border:1px solid var(--separator);border-radius:9px;padding:9px 10px;word-break:break-all;line-height:1.7"></div>
-        <button class="btn ghost sm" id="btn-copy-origin" style="margin-top:9px">Copy this origin</button>
+        <button class="btn ghost sm" id="btn-copy-origin" style="margin-top:12px">Copy this origin</button>
       </div>
     </div>
   </div>
@@ -321,7 +451,7 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
     <h1 style="font-size:22px;line-height:28px">Waiting to be let in</h1>
     <p class="sub" id="waiting-note" style="margin:9px 0 18px"></p>
     <button class="btn" id="btn-recheck" data-ref="recheck-btn">Check again</button>
-    <button class="btn ghost" id="btn-cancel-req" style="margin-top:8px">Cancel request</button>
+    <button class="btn ghost" id="btn-cancel-req" style="margin-top:12px">Cancel request</button>
   </div>
 </section>
 
@@ -345,14 +475,14 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
       <div class="card">
         <h2>Add groceries</h2>
         <p class="sub" style="padding-bottom:2px">Scanning pulls the name, size and photo automatically.</p>
-        <div class="row" style="margin-top:11px">
+        <div class="row" style="margin-top:12px">
           <button class="btn" id="btn-scan" data-ref="scan-barcode-btn">Scan barcode</button>
           <button class="btn ghost" id="btn-manual" data-ref="add-manual-btn" style="width:auto;white-space:nowrap">Manual</button>
         </div>
-        <div id="scanbox" class="hide" style="margin-top:11px">
+        <div id="scanbox" class="hide" style="margin-top:12px">
           <video id="video" playsinline muted></video>
-          <p class="sub" id="scanstatus" style="margin-top:7px">Point at the barcode…</p>
-          <button class="btn ghost sm" id="btn-scanstop" style="margin-top:6px">Stop</button>
+          <p class="sub" id="scanstatus" style="margin-top:12px">Point at the barcode…</p>
+          <button class="btn ghost sm" id="btn-scanstop" style="margin-top:12px">Stop</button>
         </div>
       </div>
       <div class="card">
@@ -370,9 +500,9 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
       <div class="card" id="receipt-intro">
         <h2>Scan a receipt</h2>
         <p class="sub">We read the line items, then <b>you</b> choose which ones the house splits. Anything you don't tick stays 100% yours.</p>
-        <label class="btn" style="margin-top:11px" data-ref="scan-receipt-btn">Photograph receipt
+        <label class="btn" style="margin-top:12px" data-ref="scan-receipt-btn">Photograph receipt
           <input type="file" id="receipt-file" accept="image/*" capture="environment" class="hide"></label>
-        <div id="ocr-prog" class="hide"><div class="progress"><i id="ocr-bar"></i></div><p class="sub" id="ocr-note" style="margin-top:6px">Reading receipt…</p></div>
+        <div id="ocr-prog" class="hide"><div class="progress"><i id="ocr-bar"></i></div><p class="sub" id="ocr-note" style="margin-top:12px">Reading receipt…</p></div>
       </div>
 
       <div id="receipt-edit" class="hide">
@@ -389,11 +519,11 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
 
         <div class="card">
           <div class="row"><h2 style="flex:1">Split</h2></div>
-          <div class="seg" style="margin-top:8px">
+          <div class="seg" style="margin-top:12px">
             <button data-mode="even" class="on" data-ref="split-even">Evenly</button>
             <button data-mode="custom" data-ref="split-custom">By percentage</button>
           </div>
-          <div id="weights" class="hide" style="margin-top:11px"></div>
+          <div id="weights" class="hide" style="margin-top:12px"></div>
         </div>
 
         <div class="card">
@@ -406,7 +536,7 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
           <div id="summary"></div>
         </div>
         <button class="btn" id="btn-settle" data-ref="settle-btn">Save trip</button>
-        <button class="btn ghost" id="btn-discard" data-ref="discard-btn" style="margin-top:8px">Discard this receipt</button>
+        <button class="btn ghost" id="btn-discard" data-ref="discard-btn" style="margin-top:12px">Discard this receipt</button>
         <div style="height:14px"></div>
       </div>
     </section>
@@ -426,7 +556,7 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
       <div class="card" data-ref="venmo-card">
         <h2>Venmo handles</h2>
         <p class="sub">Yours is how housemates pay you back without asking.</p>
-        <div class="row" style="margin-top:6px">
+        <div class="row" style="margin-top:12px">
           <input class="field" id="venmo-in" data-ref="venmo-handle-input" placeholder="@your-venmo" style="margin:0">
           <button class="btn sm" id="btn-venmo-save">Save</button>
         </div>
@@ -456,7 +586,10 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
       <div class="secfoot">Just the handle. We only ever use it to build a payment link.</div>
 
       <div class="sechead">Vibe</div>
-      <div class="card pad"><div class="vibegrid" id="vibes" data-ref="vibe-picker"></div></div>
+      <div class="card pad">
+        <div class="vibegrid" id="vibes" data-ref="vibe-picker"></div>
+        <div id="variants" class="hide" style="margin-top:14px"></div>
+      </div>
       <div class="secfoot">Your own look — housemates keep whatever they picked.</div>
 
       <div class="sechead">Household</div>
@@ -485,7 +618,7 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
       </div>
       <div class="card">
         <h2>Who's been paying</h2>
-        <div id="spend-people" style="margin-top:8px"></div>
+        <div id="spend-people" style="margin-top:12px"></div>
       </div>
       <div class="card">
         <h2>Trip history</h2>
@@ -646,7 +779,7 @@ function initAuth(){
   }
 }
 function signIn(p){
-  me = p; save(); applyVibe(currentVibe());
+  me = p; save(); applyVibe(currentVibe(), currentVariant());
   if(CLOUD()){
     houses = {};
     let landed = false;
@@ -1011,7 +1144,7 @@ function itemSheet(id){
     <div class="seg">
       ${["full","half","empty"].map(s=>`<button class="st-pick ${ (i.stock||'full')===s ? 'on':''}" data-s="${s}">${s[0].toUpperCase()+s.slice(1)}</button>`).join("")}
     </div>
-    <button class="btn" style="margin-top:14px" id="ed-save">Save</button>
+    <button class="btn" style="margin-top:12px" id="ed-save">Save</button>
     <button class="btn ghost" style="margin-top:7px;color:var(--warning)" id="ed-del">Remove from pantry</button>`);
   let cat = i.cat || "other", stock = i.stock || "full";
   $$("#sheet .cat-pick").forEach(b=>b.onclick=()=>{ cat=b.dataset.k;
@@ -1061,7 +1194,7 @@ async function startScan(){
     $("#btn-scanstop").classList.add("hide");
     $("#scanstatus").innerHTML = "No camera here — <b>type the barcode instead:</b>";
     $("#scanbox").insertAdjacentHTML("beforeend",
-      `<div id="bc-fallback" class="row" style="margin-top:8px">
+      `<div id="bc-fallback" class="row" style="margin-top:12px">
          <input class="field" id="bc-manual" inputmode="numeric" placeholder="e.g. 0049000042566" style="margin:0">
          <button class="btn sm" id="bc-go" style="white-space:nowrap">Look up</button>
        </div>`);
@@ -1236,7 +1369,7 @@ function renderWeights(){
        <span class="sub">Total</span>
        <b style="color:${total===100?'var(--tint)':'var(--warning)'}">${total}%${total===100?' ✓':''}</b></div>` +
     (total !== 100
-      ? `<p class="sub" style="font-size:11.5px;margin-top:4px">Doesn't need to hit 100 — we divide by the shares you've set. But it reads clearer when it does. <button class="btn ghost sm" style="margin-top:6px" onclick="balanceWeights()">Even it out</button></p>`
+      ? `<p class="sub" style="font-size:11.5px;margin-top:4px">Doesn't need to hit 100 — we divide by the shares you've set. But it reads clearer when it does. <button class="btn ghost sm" style="margin-top:12px" onclick="balanceWeights()">Even it out</button></p>`
       : "");
 }
 /* live=true during a drag: update the label in place and recompute the totals,
@@ -1349,7 +1482,7 @@ function renderSummary(){
     `<div class="totrow big"><span>Receipt total</span><span>${money(s.grand)}</span></div>` +
     (RCPT.total && Math.abs(RCPT.total-s.grand)>0.02
       ? `<p class="sub" style="margin-top:7px;color:var(--warning)">⚠ Receipt says ${money(RCPT.total)} — ${money(Math.abs(RCPT.total-s.grand))} off. Check for a missed line.</p>`
-      : `<p class="sub" style="margin-top:7px">✓ Matches the printed total.</p>`);
+      : `<p class="sub" style="margin-top:12px">✓ Matches the printed total.</p>`);
 }
 $("#btn-discard").onclick = () => {
   if(LINES.length && !confirm("Throw away this receipt and start again?")) return;
@@ -1458,24 +1591,68 @@ function recordPayment(uid, amount, theyPaidMe){
 $("#btn-nudge-venmo").onclick = () => { go("account"); setTimeout(()=>$("#acct-venmo")?.focus(), 80); };
 
 const VIBES = [
-  {id:"crisp",    name:"Crisp",    sw:["#F2F2F7","#FFFFFF","#0F7B41"]},
-  {id:"market",   name:"Market",   sw:["#F4F1EA","#FFFDF8","#2F7D55"]},
-  {id:"midnight", name:"Midnight", sw:["#0B0D12","#161A22","#7C8CFF"]},
-  {id:"forest",   name:"Forest",   sw:["#0F1511","#18211B","#7BD88F"]},
-  {id:"sorbet",   name:"Sorbet",   sw:["#FDF2F4","#FFFFFF","#C2417A"]},
-  {id:"mono",     name:"Mono",     sw:["#EDEDED","#FFFFFF","#111111"]}
+  {id:"minimal",   name:"Minimal",   sw:["#F7F6F4","#FFFFFF","#2E2A25"],
+   variants:[{id:"light",name:"Light"},{id:"dark",name:"Dark"}], fonts:["Jost:wght@300;400;500;600"]},
+  {id:"y2k",       name:"Y2K",       sw:["#FFE6F7","#00E5FF","#D6006E"],
+   variants:[{id:"pink",name:"Pink"},{id:"blue",name:"Blue"}],
+   fonts:["Press+Start+2P","Space+Grotesk:wght@400;500;700"]},
+  {id:"seventies", name:"70s",       sw:["#F0DFBC","#7C8F28","#B14A12"],
+   fonts:["Alfa+Slab+One","Karla:wght@400;600;700"]},
+  {id:"earthy",    name:"Earthy",    sw:["#EFE2D2","#4F6437","#9C4A22"],
+   fonts:["Fraunces:opsz,wght@9..144,400;9..144,700","Karla:wght@400;600;700"]},
+  {id:"comic",     name:"Comic",     sw:["#FFE04A","#0056D6","#D3002B"],
+   fonts:["Bangers","Nunito:wght@400;600;800"]},
+  {id:"steampunk", name:"Steampunk", sw:["#15100B","#241C13","#D9A75A"],
+   fonts:["Cinzel:wght@500;700","Lora:wght@400;600"]}
 ];
-/* A vibe is a personal display choice, so it lives on the device rather than
-   in the shared house — your housemates keep whatever they picked. */
-function vibeKey(){ return "vibe:" + (me ? me.id : "anon"); }
-function applyVibe(v){
-  if(v && v !== "crisp") document.documentElement.setAttribute("data-vibe", v);
-  else document.documentElement.removeAttribute("data-vibe");
-  const meta = document.querySelector('meta[name="theme-color"]');
-  if(meta) setTimeout(()=>{ meta.content = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim() || "#F2F2F7"; }, 30);
+const vibeDef = id => VIBES.find(v => v.id === id) || VIBES[0];
+
+/* Fonts are pulled only when a vibe that needs them is chosen, so nobody pays
+   for six typefaces to look at one. */
+const loadedFonts = new Set();
+function loadFonts(v){
+  (vibeDef(v).fonts || []).forEach(f => {
+    if(loadedFonts.has(f)) return;
+    loadedFonts.add(f);
+    const l = document.createElement("link");
+    l.rel = "stylesheet";
+    l.href = `https://fonts.googleapis.com/css2?family=${f}&display=swap`;
+    document.head.appendChild(l);
+  });
 }
-function setVibe(v){ DB.set(vibeKey(), v); applyVibe(v); renderAccount(); toast(`${(VIBES.find(x=>x.id===v)||{}).name} it is`); }
-function currentVibe(){ return DB.get(vibeKey(), "crisp"); }
+
+/* A vibe is a personal display choice, so it lives on the device rather than in
+   the shared house — your housemates keep whatever they picked. */
+function vibeKey(){ return "vibe:" + (me ? me.id : "anon"); }
+function varKey(){ return "variant:" + (me ? me.id : "anon"); }
+function currentVibe(){ return DB.get(vibeKey(), "minimal"); }
+function currentVariant(){
+  const d = vibeDef(currentVibe());
+  const saved = DB.get(varKey(), null);
+  if(!d.variants) return null;
+  return d.variants.some(x => x.id === saved) ? saved : d.variants[0].id;
+}
+function applyVibe(v, variant){
+  const d = vibeDef(v);
+  loadFonts(d.id);
+  document.documentElement.setAttribute("data-vibe", d.id);
+  const wanted = variant || (d.variants ? d.variants[0].id : null);
+  if(wanted) document.documentElement.setAttribute("data-variant", wanted);
+  else document.documentElement.removeAttribute("data-variant");
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if(meta) setTimeout(()=>{ meta.content = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim() || "#F7F6F4"; }, 40);
+}
+function setVibe(v){
+  DB.set(vibeKey(), v);
+  const d = vibeDef(v);
+  if(d.variants) DB.set(varKey(), d.variants[0].id);
+  applyVibe(v, currentVariant()); renderAccount();
+  toast(`${d.name}${d.variants ? " · " + d.variants[0].name : ""}`);
+}
+function setVariant(x){
+  DB.set(varKey(), x);
+  applyVibe(currentVibe(), x); renderAccount();
+}
 
 /* Shrink to a 192px square JPEG before storing — a profile picture should cost
    a few kilobytes, not sit in the house document at full camera resolution. */
@@ -1517,12 +1694,18 @@ function renderAccount(){
     $("#acct-house").textContent = H().name;
     $("#acct-house-sub").textContent = `${H().members.length} housemate${H().members.length===1?"":"s"} · code ${H().code}`;
   }
-  const cv = currentVibe();
+  const cv = currentVibe(), cvar = currentVariant(), d = vibeDef(cv);
   $("#vibes").innerHTML = VIBES.map(v=>`
     <button class="vibecard ${v.id===cv?'on':''}" onclick="setVibe('${v.id}')" data-vibe-pick="${v.id}">
       <span class="swatch">${v.sw.map(c=>`<i style="background:${c};box-shadow:inset 0 0 0 .5px rgba(128,128,128,.35)"></i>`).join("")}</span>
       <span class="nm">${v.name}${v.id===cv?' ✓':''}</span>
     </button>`).join("");
+  const vb = $("#variants");
+  vb.classList.toggle("hide", !d.variants);
+  if(d.variants){
+    vb.innerHTML = `<div class="seg" data-ref="variant-seg">${d.variants.map(x=>
+      `<button class="${x.id===cvar?'on':''}" data-variant-pick="${x.id}" onclick="setVariant('${x.id}')">${x.name}</button>`).join("")}</div>`;
+  }
 }
 $("#acct-save").onclick = () => {
   const v = $("#acct-venmo").value.trim();
@@ -1738,11 +1921,11 @@ function bootCloud(){
 let cloudBooted = false;
 window.addEventListener("hc-sync-ready", bootCloud);
 window.onload = () => { initAuth(); bootCloud(); };
-applyVibe(currentVibe());
+applyVibe(currentVibe(), currentVariant());
 route();
 
 /* expose for inline handlers */
-Object.assign(window,{signIn,closeSheet,approveJoin,denyJoin,cancelRequest,recheckRequest,isAdmin,addManual,delItem,toggleLine,toggleWho,renameLine,toggleExpand,signOut,confirmSignOut,setPrice,setVibe,renderAccount,swipeDelete,switchHouse,leaveToGate,recordPayment,tripDetail,onBarcode,$,cycleStock,restock,itemSheet,setWeight,balanceWeights});
+Object.assign(window,{signIn,closeSheet,approveJoin,denyJoin,cancelRequest,recheckRequest,isAdmin,addManual,delItem,toggleLine,toggleWho,renameLine,toggleExpand,signOut,confirmSignOut,setPrice,setVibe,setVariant,renderAccount,swipeDelete,switchHouse,leaveToGate,recordPayment,tripDetail,onBarcode,$,cycleStock,restock,itemSheet,setWeight,balanceWeights});
 </script>
 </body>
 </html>
