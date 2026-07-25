@@ -28,8 +28,9 @@ node verify.mjs http://localhost:8123
 | Receipt OCR | **Real** — Tesseract.js, runs client-side, no upload |
 | Line-item parsing, split math, tax allocation | **Real** |
 | Venmo charge links | **Real** — `venmo.com/<handle>?txn=charge&amount=&note=` |
-| Google sign-in | **Real** — Google Identity Services. Needs an OAuth Web client ID in `prototype/config.js`; see SETUP.md |
-| Storage | **localStorage** — needs a server + DB before housemates on different phones share a house for real |
+| Google sign-in | **Real** — Google Identity Services; the ID token is exchanged for a Firebase session |
+| Shared households | **Firestore** — live sync across devices, offline cache, `firestore.rules` enforces access |
+| Storage | **Firestore**, with localStorage as an optimistic cache. `?local=1` forces local-only (used by the tests) |
 
 ## Next steps for production
 1. **Cloud Console** → OAuth 2.0 Web client, authorized origin = your domain → paste ID into `GOOGLE_CLIENT_ID`.

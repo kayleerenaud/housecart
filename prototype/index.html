@@ -15,6 +15,10 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%23e6f2ea'/><path d='M22 40h56l-5 40a6 6 0 0 1-6 5H33a6 6 0 0 1-6-5z' fill='%23d9a86f'/><path d='M22 40h56l-1 9H23z' fill='%23c8945c'/><path d='M37 40c0-8 6-13 13-13s13 5 13 13' fill='none' stroke='%23c8945c' stroke-width='3.5' stroke-linecap='round'/><circle cx='41' cy='60' r='2.6' fill='%237a5327'/><circle cx='59' cy='60' r='2.6' fill='%237a5327'/><path d='M45 66q5 4 10 0' stroke='%237a5327' stroke-width='2.4' fill='none' stroke-linecap='round'/></svg>">
 <script src="config.js"></script>
+<script type="module">
+  // only pull in the Firebase SDK when cloud sync is actually on
+  if (window.HOUSECART_CONFIG && window.HOUSECART_CONFIG.USE_FIREBASE) import("./sync.js");
+</script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -457,6 +461,24 @@ function sheet(html){ $("#sheet").innerHTML = html; $("#modal").classList.remove
 function closeSheet(){ $("#modal").classList.add("hide"); }
 $("#modal").onclick = e => { if(e.target.id==="modal") closeSheet(); };
 
+/* ── cloud bridge ──────────────────────────────────────────────────────────
+   When Firebase is configured every mutation is ALSO written to Firestore, and
+   live snapshots overwrite the local copy. Local state stays as an optimistic
+   cache so the UI never waits on a round trip. */
+const CLOUD = () => !!(CFG.USE_FIREBASE && window.HC_SYNC && window.HC_SYNC.ready);
+function fbErr(e){
+  const c = (e && e.code) || "";
+  if(c.includes("permission-denied")) return "The house said no — you may not be a member yet.";
+  if(c.includes("unavailable"))       return "Offline — saved here, will sync when you're back.";
+  if(c.includes("unauthenticated"))   return "Signed out. Sign in again.";
+  return "Couldn't save: " + (e && (e.message || e.code) || "unknown");
+}
+async function cloud(fn, ...args){
+  if(!CLOUD()) return;
+  try { return await window.HC_SYNC[fn](...args); }
+  catch(e){ console.warn("sync." + fn, e); toast(fbErr(e)); }
+}
+
 let me = DB.get("me", null);
 let houses = DB.get("houses", {});      // code -> {code,name,members:[{id,name,email,pic,venmo}],pantry:[],trips:[]}
 let cur = DB.get("cur", null);          // current house code
@@ -474,12 +496,27 @@ function jwtPayload(token){
   return JSON.parse(json);
 }
 
-function onCredential(res){
+async function onCredential(res){
   let p;
   try { p = jwtPayload(res.credential); }
   catch(e){ $("#gsi-note").textContent = "Couldn't read that Google response — try again."; return; }
-  signIn({ id:p.sub, name:p.name || p.given_name || p.email, email:p.email,
-           pic:p.picture || "", venmo:"" });
+  const local = { id:p.sub, name:p.name || p.given_name || p.email, email:p.email,
+                  pic:p.picture || "", venmo:"" };
+  if(CLOUD()){
+    $("#gsi-note").textContent = "Signing you in…";
+    try {
+      const u = await window.HC_SYNC.signInWithGoogleIdToken(res.credential);
+      return signIn(u);            // uid comes from Firebase, not the raw Google sub
+    } catch(e){
+      console.warn("firebase auth", e);
+      const c = (e && e.code) || "";
+      $("#gsi-note").innerHTML = c.includes("operation-not-allowed")
+        ? "Google sign-in isn't switched on in Firebase yet — <b>Authentication → Sign-in method → Google → Enable</b>."
+        : "Sign-in failed: " + (e.message || c);
+      return;
+    }
+  }
+  signIn(local);
 }
 
 function showSetupHelp(){
@@ -527,6 +564,21 @@ function initAuth(){
 }
 function signIn(p){
   me = p; save();
+  if(CLOUD()){
+    houses = {};
+    window.HC_SYNC.watchHouses(p.id, houses, err => {
+      if(err) return;
+      // land in a house as soon as one shows up
+      if(!cur || !houses[cur]){
+        const first = Object.keys(houses)[0];
+        if(first){ cur = first; pendingCode = null; pendingInfo = null; DB.set("pending", null); save(); }
+      }
+      route();
+    });
+    if(pendingInfo){ pendingCode = pendingInfo.code; watchRequest(); }
+    route();
+    return;
+  }
   // if they already belong to a house, walk straight back into it
   const mine = Object.values(houses).find(h => h.members.some(m => m.id === p.id));
   if(mine) cur = mine.code;
@@ -571,41 +623,71 @@ $("#btn-create").onclick = () => {
 
 /* Joining is a REQUEST. Only the member who created the house can approve it,
    so a guessed code gets you a pending row, not somebody's grocery history. */
-$("#btn-join").onclick = () => {
+$("#btn-join").onclick = async () => {
   const code = $("#join-code").value.trim().toUpperCase();
+  if(!code) return;
+  if(houses[code] && houses[code].members.some(m=>m.id===me.id)){
+    cur = code; save(); route(); return toast("Welcome back");
+  }
+  if(CLOUD()){
+    const info = await window.HC_SYNC.peekHouse(code);
+    if(!info) return toast("No house with that code");
+    await cloud("requestJoin", code, { id:me.id, name:me.name, email:me.email||"", pic:me.pic||"" });
+    pendingCode = code; pendingInfo = { code, name:info.name, adminName:info.adminName };
+    DB.set("pending", pendingInfo); route(); watchRequest();
+    return toast("Request sent");
+  }
   const h = houses[code];
   if(!h) return toast("No house with that code");
-  if(h.members.some(m=>m.id===me.id)){ cur = code; save(); route(); return toast("Welcome back"); }
   h.pending = h.pending || [];
-  if(!h.pending.some(r=>r.id===me.id)){
-    h.pending.push({ id:me.id, name:me.name, email:me.email, pic:me.pic||"", at:Date.now() });
-  }
+  if(!h.pending.some(r=>r.id===me.id)) h.pending.push({ id:me.id, name:me.name, email:me.email, pic:me.pic||"", at:Date.now() });
   save(); pendingCode = code; route();
   toast("Request sent");
 };
+
+let pendingInfo = DB.get("pending", null);
+let unwatchReq = null;
+function watchRequest(){
+  if(!CLOUD() || !pendingCode) return;
+  if(unwatchReq){ try{unwatchReq()}catch(e){} }
+  unwatchReq = window.HC_SYNC.watchMyRequest(me.id, pendingCode, req => {
+    if(req) return;                                   // still waiting
+    const code = pendingCode;
+    // request gone: either we're in the house now, or we were declined
+    setTimeout(() => {
+      if(houses[code]){ pendingCode = null; pendingInfo = null; DB.set("pending", null); cur = code; save(); route(); toast("You're in!"); }
+      else { pendingCode = null; pendingInfo = null; DB.set("pending", null); route(); toast("That request was declined"); }
+    }, 600);
+  });
+}
 
 /* ── approvals ── */
 const isAdmin  = h => h && h.adminId === me?.id;
 const adminOf  = h => (h?.members || []).find(m => m.id === h.adminId) || {name:"the house admin"};
 let pendingCode = null;                       // house we're waiting on, if any
 
-function approveJoin(code, uid){
+async function approveJoin(code, uid){
   const h = houses[code]; if(!isAdmin(h)) return toast("Only the house admin can approve");
   const r = (h.pending||[]).find(x=>x.id===uid); if(!r) return;
   h.pending = h.pending.filter(x=>x.id!==uid);
   if(!h.members.some(m=>m.id===uid)) h.members.push({ ...r, venmo:"" });
   save(); render(); closeSheet(); toast(`${r.name.split(" ")[0]} is in`);
+  await cloud("approveJoin", code, r);
 }
-function denyJoin(code, uid){
+async function denyJoin(code, uid){
   const h = houses[code]; if(!isAdmin(h)) return toast("Only the house admin can approve");
   const r = (h.pending||[]).find(x=>x.id===uid);
   h.pending = (h.pending||[]).filter(x=>x.id!==uid);
   save(); render(); closeSheet(); toast(r ? `Declined ${r.name.split(" ")[0]}` : "Declined");
+  await cloud("denyJoin", code, uid);
 }
-function cancelRequest(){
-  const h = houses[pendingCode];
+async function cancelRequest(){
+  const code = pendingCode, h = houses[code];
   if(h) h.pending = (h.pending||[]).filter(x=>x.id!==me.id);
-  pendingCode = null; save(); route();
+  pendingCode = null; pendingInfo = null; DB.set("pending", null);
+  if(unwatchReq){ try{unwatchReq()}catch(e){} unwatchReq = null; }
+  save(); route();
+  await cloud("cancelJoin", code, me.id);
 }
 function recheckRequest(){
   const h = houses[pendingCode];
@@ -664,7 +746,11 @@ $("#house-switch").onclick = () => {
     else { try{ await navigator.clipboard.writeText(text + " " + location.href); toast("Invite copied"); }catch(e){ prompt("Send this:", text); } }
   };
 };
-function signOut(){ me=null; cur=null; save(); closeSheet(); route(); toast("Signed out"); }
+function signOut(){
+  if(CLOUD()){ try{ window.HC_SYNC.stop(); window.HC_SYNC.signOutFirebase(); }catch(e){} }
+  me=null; cur=null; houses={}; pendingCode=null; pendingInfo=null;
+  DB.set("pending", null); save(); closeSheet(); route(); toast("Signed out");
+}
 function switchHouse(c){ cur=c; save(); closeSheet(); render(); toast("Switched to "+houses[c].name); }
 function leaveToGate(){ cur=null; save(); route(); }
 
@@ -697,11 +783,12 @@ function guessCat(text){
 const STOCK_NEXT  = { plenty:"low", low:"out", out:"plenty" };
 const STOCK_LABEL = { plenty:"", low:"running low", out:"out" };
 
-function cycleStock(id){
+async function cycleStock(id){
   const it = H().pantry.find(i=>i.id===id); if(!it) return;
   it.stock = STOCK_NEXT[it.stock || "plenty"];
   save(); render();
   if(it.stock === "out") toast("On the list.");
+  await cloud("putPantry", cur, it);
 }
 
 /* Checking something off the shopping list refills it — you watch the jar rise. */
@@ -711,6 +798,7 @@ function restock(id){
   const jar = row?.querySelector(".jar");
   if(jar){ jar.className = "jar plenty"; row.classList.add("restocking"); }
   it.stock = "plenty"; save();
+  cloud("putPantry", cur, it);
   setTimeout(()=>{ render(); toast("Back on the shelf."); }, 420);
 }
 
@@ -767,8 +855,8 @@ function itemSheet(id){
       x.style.borderColor = on?"var(--accent)":"var(--line)"; x.style.background = on?"var(--accent-soft)":"#fff"; }); });
   $$("#sheet .st-pick").forEach(b=>b.onclick=()=>{ stock=b.dataset.s;
     $$("#sheet .st-pick").forEach(x=>x.classList.toggle("on", x.dataset.s===stock)); });
-  $("#ed-save").onclick = () => { i.name = $("#ed-name").value.trim() || i.name; i.cat = cat; i.stock = stock;
-    save(); closeSheet(); render(); toast("Updated"); };
+  $("#ed-save").onclick = async () => { i.name = $("#ed-name").value.trim() || i.name; i.cat = cat; i.stock = stock;
+    save(); closeSheet(); render(); toast("Updated"); await cloud("putPantry", cur, i); };
   $("#ed-del").onclick = () => { delItem(i.id); closeSheet(); };
 }
 
@@ -834,6 +922,7 @@ async function onBarcode(code){
     } else toast("Not in the product database — name it yourself");
   }catch(e){ toast("Lookup failed — offline?"); }
   H().pantry.unshift(it); save(); render();
+  await cloud("putPantry", cur, it);
 }
 
 $("#btn-manual").onclick = () => sheet(`
@@ -847,14 +936,16 @@ document.addEventListener("change", e => {
   if(e.target.id==="m-img"){ const f=e.target.files[0]; if(!f) return;
     const rd=new FileReader(); rd.onload=()=>{ $("#m-prev").src=rd.result; $("#m-prev").classList.remove("hide"); }; rd.readAsDataURL(f); }
 });
-function addManual(){
+async function addManual(){
   const n = $("#m-name").value.trim(); if(!n) return toast("Give it a name");
-  H().pantry.unshift({ id:crypto.randomUUID(), name:n, brand:$("#m-brand").value.trim(), size:$("#m-size").value.trim(),
+  const it = { id:crypto.randomUUID(), name:n, brand:$("#m-brand").value.trim(), size:$("#m-size").value.trim(),
     img: $("#m-prev").classList.contains("hide") ? "" : $("#m-prev").src, by:me.name, at:Date.now(),
-    stock:"plenty", cat:guessCat(n + " " + $("#m-brand").value) });
+    stock:"plenty", cat:guessCat(n + " " + $("#m-brand").value) };
+  H().pantry.unshift(it);
   save(); closeSheet(); render(); toast("Added");
+  await cloud("putPantry", cur, it);
 }
-function delItem(id){ H().pantry = H().pantry.filter(i=>i.id!==id); save(); render(); }
+async function delItem(id){ H().pantry = H().pantry.filter(i=>i.id!==id); save(); render(); await cloud("dropPantry", cur, id); }
 
 /* ═══════════ 4. RECEIPT — real OCR + parsing ═══════════ */
 let LINES = [], RCPT = {tax:0, total:0, store:""};
@@ -1087,7 +1178,7 @@ $("#btn-settle").onclick = () => {
     store: (RCPT.store||"").trim(), splitMode: SPLIT_MODE, weights: {...activeWeights()},
     items:LINES.map(({name,price,split,who})=>({name,price,split,who})),
     owed:s.owed, total:s.grand, shared:s.shared });
-  save(); LINES=[]; RCPT={tax:0,total:0,store:""};
+  save(); cloud("putTrip", cur, H().trips[0]); LINES=[]; RCPT={tax:0,total:0,store:""};
   $("#receipt-edit").classList.add("hide"); $("#receipt-intro").classList.remove("hide");
   go("settle"); toast("Trip saved — balances updated.");
 };
@@ -1168,9 +1259,11 @@ $("#btn-squareup").onclick = () => {
 
 function recordPayment(uid, amount, theyPaidMe){
   H().payments = H().payments || [];
-  H().payments.push({ id:crypto.randomUUID(), at:Date.now(), amount,
-    from: theyPaidMe ? uid : me.id, to: theyPaidMe ? me.id : uid });
+  const p = { id:crypto.randomUUID(), at:Date.now(), amount,
+    from: theyPaidMe ? uid : me.id, to: theyPaidMe ? me.id : uid };
+  H().payments.push(p);
   save(); closeSheet(); render(); toast("Balance updated");
+  cloud("putPayment", cur, p);
 }
 
 $("#btn-nudge-venmo").onclick = () => accountSheet(true);
@@ -1202,6 +1295,7 @@ function accountSheet(focusVenmo){
     const v = $("#acct-venmo").value.trim();
     const m = H().members.find(x=>x.id===me.id); if(m) m.venmo = v;
     me.venmo = v; save(); closeSheet(); render(); toast(v ? "Venmo linked" : "Venmo cleared");
+    cloud("setMembers", cur, H().members);
   };
   $("#acct-save").onclick = save1;
   $("#acct-venmo").onkeydown = e => { if(e.key==="Enter") save1(); };
@@ -1211,6 +1305,7 @@ function accountSheet(focusVenmo){
 $("#btn-venmo-save").onclick = () => {
   const v = $("#venmo-in").value.trim();
   H().members.find(m=>m.id===me.id).venmo = v; me.venmo = v; save(); renderSettle(); toast("Venmo linked");
+  cloud("setMembers", cur, H().members);
 };
 
 /* ═══════════ 6. SPENDING ═══════════ */
@@ -1323,15 +1418,19 @@ $("#btn-cancel-req").onclick = cancelRequest;
 function route(){
   const signed  = !!me;
   const housed  = signed && cur && houses[cur] && houses[cur].members.some(m=>m.id===me.id);
-  const waiting = signed && !housed && pendingCode && houses[pendingCode];
+  const waiting = signed && !housed && pendingCode && (houses[pendingCode] || pendingInfo);
   $("#signin").classList.toggle("hide", signed);
   $("#waiting").classList.toggle("hide", !waiting);
   $("#housegate").classList.toggle("hide", !signed || !!housed || !!waiting);
   $("#app").classList.toggle("hide", !housed);
   if(waiting){
     const h = houses[pendingCode];
+    const nm = (pendingInfo && pendingInfo.name) || (h && h.name) || pendingCode;
+    const ad = (pendingInfo && pendingInfo.adminName) || (h ? adminOf(h).name : "the house admin");
     $("#waiting-note").innerHTML =
-      `Your request to join <b>${h.name}</b> (${h.code}) is sitting with <b>${adminOf(h).name}</b>, who set the house up. They'll see it next time they open HouseCart.`;
+      `Your request to join <b>${nm}</b> (${pendingCode}) is sitting with <b>${ad}</b>, who set the house up.` +
+      (CLOUD() ? " This screen updates by itself the moment they say yes." : " They'll see it next time they open HouseCart.");
+    $("#btn-recheck").classList.toggle("hide", CLOUD());
   }
   if(signed && !housed && !waiting){
     const mine = Object.values(houses).filter(h=>h.members.some(m=>m.id===me.id));
@@ -1339,7 +1438,15 @@ function route(){
   }
   if(housed) render();
 }
-window.onload = initAuth;
+function bootCloud(){
+  if(!CLOUD()) return;
+  window.HC_SYNC.onUser(u => {
+    if(u && (!me || me.id !== u.id)) signIn({ ...u, venmo: (me && me.venmo) || "" });
+    else if(!u && me){ me = null; cur = null; houses = {}; save(); route(); }
+  });
+}
+window.addEventListener("hc-sync-ready", bootCloud);
+window.onload = () => { initAuth(); bootCloud(); };
 route();
 
 /* expose for inline handlers */

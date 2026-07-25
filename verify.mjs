@@ -2,8 +2,9 @@
    node verify.mjs <base-url> */
 import pw from '/usr/lib/node_modules/playwright/index.js';
 const { chromium } = pw;
+const withLocal = u => u.includes('local=1') ? u : u + (u.includes('?') ? '&' : '?') + 'local=1';
 
-const BASE = process.argv[2];
+const BASE = withLocal(process.argv[2]);
 
 const out = [];
 const log = (...a) => { const s = a.join(' '); out.push(s); console.log(s); };

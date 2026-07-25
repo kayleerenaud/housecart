@@ -1,7 +1,8 @@
 /* Pantry stock/categories/lists + percentage splits. node verify-features.mjs <url> */
 import pw from '/usr/lib/node_modules/playwright/index.js';
 const { chromium } = pw;
-const B = process.argv[2] || 'http://127.0.0.1:8123/index.html';
+const withLocal = u => u.includes('local=1') ? u : u + (u.includes('?') ? '&' : '?') + 'local=1';
+const B = withLocal(process.argv[2] || 'http://127.0.0.1:8123/index.html');
 let fails=0; const ok=(c,m)=>{console.log((c?'  PASS  ':'  FAIL  ')+m); if(!c)fails++;};
 const log=(...a)=>console.log(...a);
 const b=await chromium.launch({args:['--no-sandbox']});
