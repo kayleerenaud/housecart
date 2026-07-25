@@ -17,8 +17,8 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
 import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
-  doc, collection, onSnapshot, setDoc, updateDoc, deleteDoc, getDoc, getDocs,
-  query, where, serverTimestamp
+  doc, collection, onSnapshot, setDoc, updateDoc, deleteDoc, getDoc,
+  query, where
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 
 const CFG = window.HOUSECART_CONFIG || {};
@@ -100,8 +100,8 @@ function watchHouses(uid, houses, onChange){
    admin approves — no polling, no "check again". */
 function watchMyRequest(uid, code, cb){
   return onSnapshot(doc(db,"houses",code,"joinRequests",uid),
-    d => cb(d.exists() ? d.data() : null),
-    err => cb(null, err));
+    d => cb(d.exists() ? d.data() : null, null),
+    err => cb(null, err));           // errors are NOT a decision — see caller
 }
 
 const peekHouse = code => getDoc(doc(db,"houseCodes",code)).then(d => d.exists() ? d.data() : null);

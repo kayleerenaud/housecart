@@ -23,177 +23,187 @@
 <script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
+/* ══════════════════════════════════════════════════════════════════════════
+   HouseCart — grouped-surface design system.
+   Flat sections on a faintly grey canvas. Hierarchy comes from type weight and
+   position, never from borders. One accent, and it always means "touchable".
+   ══════════════════════════════════════════════════════════════════════════ */
 :root{
-  --bg:#f6f4ef; --card:#fffdf9; --ink:#1d1b16; --muted:#7c766a; --line:#e6e1d6;
-  --accent:#2f7d55; --accent-soft:#e6f2ea; --warn:#b4542a; --venmo:#008CFF;
-  --low:#c9853f; --low-soft:#f6ead9;
-  --radius:14px; --shadow:0 1px 2px rgba(29,27,22,.05),0 8px 24px rgba(29,27,22,.06);
+  --bg:#F2F2F7; --surface:#FFFFFF; --surface-2:rgba(120,120,128,.12);
+  --material:rgba(249,249,249,.82);
+  --label:#000; --label-2:rgba(60,60,67,.60); --label-3:rgba(60,60,67,.30);
+  --separator:rgba(60,60,67,.29);
+  --tint:#0F7B41; --tint-soft:rgba(15,123,65,.12); --on-tint:#fff;
+  --positive:#0F7B41; --negative:#C81E2B; --warning:#C25200;
+  --r-control:7px; --r-group:10px; --r-button:12px; --r-sheet:16px; --r-icon:6.5px;
+  --inset:16px;
+  --shadow-sheet:0 -8px 40px rgba(0,0,0,.14);
+  --shadow-thumb:0 3px 8px rgba(0,0,0,.12),0 3px 1px rgba(0,0,0,.04);
 }
+@media (prefers-color-scheme:dark){:root{
+  --bg:#000; --surface:#1C1C1E; --surface-2:rgba(120,120,128,.24);
+  --material:rgba(22,22,24,.78);
+  --label:#fff; --label-2:rgba(235,235,245,.60); --label-3:rgba(235,235,245,.30);
+  --separator:rgba(84,84,88,.65);
+  --tint:#30D158; --tint-soft:rgba(48,209,88,.16); --on-tint:#003514;
+  --positive:#30D158; --negative:#FF453A; --warning:#FF9F0A;
+  --shadow-sheet:0 -8px 40px rgba(0,0,0,.6);
+}}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-/* App-shell layout: the page itself never scrolls. Header and tab bar are
-   pinned, and ONLY the content area scrolls — and only when its content
-   genuinely overflows. Installed to a home screen this behaves like an app,
-   with no rubber-banding and no drifting chrome. */
 html,body{margin:0;padding:0;height:100%;overflow:hidden;overscroll-behavior:none}
-body{
-  background:var(--bg);color:var(--ink);
-  font:15px/1.45 ui-sans-serif,-apple-system,"SF Pro Text","Segoe UI",Roboto,system-ui,sans-serif;
-}
-#app{height:100dvh;display:flex;flex-direction:column;overflow:hidden}
-#app>main{
-  flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;
-  -webkit-overflow-scrolling:touch;padding-bottom:14px;
-}
-/* full-screen gates scroll internally only if a small phone forces it */
-#signin,#housegate,#waiting{height:100dvh;overflow-y:auto;overscroll-behavior:contain}
-h1,h2,h3{margin:0;font-weight:640;letter-spacing:-.01em}
-button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
-input,select{font:inherit;color:inherit}
-.wrap{max-width:520px;margin:0 auto;padding:0 14px}
+body{background:var(--bg);color:var(--label);
+  font:17px/1.32 -apple-system,"SF Pro Text",system-ui,"Segoe UI",Roboto,sans-serif;
+  letter-spacing:-.4px;-webkit-font-smoothing:antialiased}
+h1,h2,h3{margin:0;font-weight:700;letter-spacing:-.4px}
+button{font:inherit;letter-spacing:inherit;color:inherit;cursor:pointer;border:0;background:none;padding:0}
+input,select{font:inherit;letter-spacing:inherit;color:inherit}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em}
 .hide{display:none!important}
+#app{height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+#app>main{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding-bottom:28px}
+#signin,#housegate,#waiting{height:100dvh;overflow-y:auto;overscroll-behavior:contain}
+.wrap{max-width:520px;margin:0 auto;padding:0 var(--inset)}
 
-/* ---------- top bar ---------- */
-.topbar{flex:0 0 auto;position:relative;z-index:40;background:rgba(246,244,239,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
-.topbar .wrap{display:flex;align-items:center;gap:10px;height:56px}
-.logo{display:flex;align-items:center;gap:8px;padding:4px 2px;margin-left:-2px;border-radius:9px;font-weight:700;letter-spacing:-.02em;font-size:17px}
-.logo .dot{width:22px;height:22px;border-radius:7px;background:var(--accent);display:grid;place-items:center;color:#fff;font-size:12px}
+/* ---------- nav ---------- */
+.topbar{flex:0 0 auto;position:relative;z-index:40;background:var(--material);backdrop-filter:blur(20px) saturate(1.8);border-bottom:.5px solid var(--separator)}
+.topbar .wrap{display:flex;align-items:center;gap:10px;height:44px}
+.logo{display:flex;align-items:center;gap:7px;font-size:15px;font-weight:600;letter-spacing:-.2px;padding:6px 4px;margin-left:-4px;border-radius:8px}
+.logo .dot{width:21px;height:21px;border-radius:5px;background:var(--tint);display:grid;place-items:center}
+.logo .dot svg{width:13px;height:13px;display:block;stroke:var(--on-tint);fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 .spacer{flex:1}
-.housepill{display:flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:5px 10px;font-size:12.5px;font-weight:600}
-.housepill .code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--accent);letter-spacing:.06em}
-.avatar{width:28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:12px;font-weight:700;flex:0 0 auto;overflow:hidden}
+.housepill{display:flex;align-items:center;gap:5px;font-size:13px;color:var(--label-2);padding:6px 4px;border-radius:8px;letter-spacing:0}
+.housepill .code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;letter-spacing:.04em;color:var(--tint);font-weight:600}
+.avatar{width:29px;height:29px;border-radius:50%;background:var(--tint);color:var(--on-tint);display:grid;place-items:center;font-size:12px;font-weight:600;letter-spacing:0;flex:0 0 auto;overflow:hidden}
 .avatar img{width:100%;height:100%;object-fit:cover}
+.ltitle{font-size:34px;line-height:41px;font-weight:700;letter-spacing:-.4px;padding:10px 0 2px}
+.lsub{font-size:13px;line-height:18px;letter-spacing:0;color:var(--label-2);padding-bottom:14px}
 
-/* ---------- cards / bits ---------- */
-.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px;margin:12px 0}
-.card h2{font-size:15px;margin-bottom:2px}
-.sub{color:var(--muted);font-size:12.5px}
-.btn{background:var(--accent);color:#fff;border-radius:11px;padding:11px 14px;font-weight:620;font-size:14.5px;display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%}
-.btn:active{transform:scale(.99)}
-.btn.ghost{background:var(--card);color:var(--ink);border:1px solid var(--line)}
-.btn.venmo{background:var(--venmo)}
-.btn.sm{width:auto;padding:8px 12px;font-size:13px;border-radius:9px}
-.btn[disabled]{opacity:.45;pointer-events:none}
-.field{width:100%;background:#fff;border:1px solid var(--line);border-radius:11px;padding:11px 12px;margin:6px 0}
-.field:focus{outline:2px solid var(--accent-soft);border-color:var(--accent)}
+/* ---------- grouped sections ---------- */
+.card{background:var(--surface);border-radius:var(--r-group);padding:2px var(--inset);margin:0 0 24px}
+.card.pad{padding:14px var(--inset)}
+.card h2{font-size:17px;line-height:22px;font-weight:600;padding:12px 0 2px}
+.card.pad h2{padding:0}
+.sechead{font-size:12px;line-height:16px;letter-spacing:.05em;text-transform:uppercase;color:var(--label-2);padding:0 var(--inset) 7px}
+.secfoot{font-size:13px;line-height:18px;letter-spacing:0;color:var(--label-2);padding:8px 4px 0;margin:-20px 0 24px}
+.sub{color:var(--label-2);font-size:13px;line-height:18px;letter-spacing:0}
 .row{display:flex;gap:8px;align-items:center}
-.tag{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:3px 7px;border-radius:6px;background:var(--accent-soft);color:var(--accent)}
-.tag.grey{background:#efece4;color:var(--muted)}
-.empty{text-align:center;color:var(--muted);padding:30px 14px;font-size:13.5px}
-.empty .big{font-size:30px;display:block;margin-bottom:6px;opacity:.6}
+.tag{font-size:12px;font-weight:600;letter-spacing:0;padding:2px 7px;border-radius:6px;background:var(--tint-soft);color:var(--tint)}
+.tag.grey{background:var(--surface-2);color:var(--label-2)}
+.empty{text-align:center;color:var(--label-2);padding:34px 8px;font-size:13px;line-height:18px;letter-spacing:0}
+.empty .big{font-size:42px;display:block;margin-bottom:10px;opacity:.3}
+.empty b{display:block;font-size:17px;font-weight:600;color:var(--label);letter-spacing:-.4px;margin-bottom:4px}
 
-/* ---------- pantry ---------- */
-.itemrow{display:flex;gap:11px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}
-.itemrow:last-child{border-bottom:0}
-.thumb{width:46px;height:46px;border-radius:10px;background:#efece4;flex:0 0 auto;object-fit:cover;display:grid;place-items:center;font-size:19px;color:var(--muted)}
-.iname{font-weight:600;font-size:14px}
-.imeta{color:var(--muted);font-size:12px}
-.x{color:var(--muted);font-size:19px;padding:4px 6px;line-height:1}
+/* ---------- buttons ---------- */
+.btn{background:var(--tint);color:var(--on-tint);border-radius:var(--r-button);min-height:50px;padding:13px 16px;font-size:17px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;transition:opacity .15s}
+.btn:active{opacity:.72}
+.btn.ghost{background:var(--tint-soft);color:var(--tint)}
+.btn.venmo{background:var(--tint)}
+.btn.sm{width:auto;min-height:36px;padding:8px 15px;font-size:15px;border-radius:999px}
+.btn.plain{background:none;color:var(--tint);min-height:44px;padding:8px 4px;font-weight:400}
+.btn[disabled]{opacity:.4;pointer-events:none}
+.field{width:100%;background:var(--surface-2);border:0;border-radius:var(--r-group);padding:14px 16px;margin:6px 0;font-size:17px}
+.field::placeholder{color:var(--label-3)}
+.field:focus{outline:2px solid var(--tint);outline-offset:-2px}
+
+/* ---------- grouped rows ---------- */
+.itemrow{display:flex;gap:12px;align-items:center;padding:8px 0;min-height:52px;position:relative}
+.itemrow:not(:last-child)::after{content:"";position:absolute;left:41px;right:calc(-1 * var(--inset));bottom:0;height:.5px;background:var(--separator)}
+.iname{font-size:17px;font-weight:400;letter-spacing:-.4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.imeta{color:var(--label-2);font-size:13px;line-height:18px;letter-spacing:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.thumb{width:29px;height:29px;border-radius:var(--r-icon);background:var(--surface-2);flex:0 0 auto;object-fit:cover;display:grid;place-items:center;color:var(--label-2)}
+.thumb svg{width:17px;height:17px;display:block;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.x{color:var(--label-3);font-size:19px;padding:4px 6px;line-height:1}
 
 /* ---------- receipt ---------- */
-#video{width:100%;border-radius:12px;background:#000;aspect-ratio:4/3;object-fit:cover}
-.progress{height:6px;background:#efece4;border-radius:99px;overflow:hidden;margin-top:10px}
-.progress i{display:block;height:100%;background:var(--accent);width:0;transition:width .25s}
-.line{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
-.line:last-child{border-bottom:0}
-.line.off{opacity:.42}
-.chk{width:22px;height:22px;border-radius:7px;border:2px solid var(--line);flex:0 0 auto;display:grid;place-items:center;background:#fff;color:#fff;font-size:13px}
-.line.on .chk{background:var(--accent);border-color:var(--accent)}
-.lname{flex:1;font-size:14px;min-width:0}
-.lname input{border:0;background:transparent;width:100%;padding:2px 0;font-weight:560}
-.lprice{font-variant-numeric:tabular-nums;font-weight:640;font-size:14px}
-.whosum{display:block;text-align:left;padding:1px 0 7px 32px;font-size:11.5px;font-weight:600;color:var(--accent);letter-spacing:.01em}
-.who{display:flex;gap:5px;flex-wrap:wrap;padding:2px 0 9px 32px}
-.who button{border:1px solid var(--line);background:#fff;border-radius:999px;padding:3px 9px;font-size:11.5px;font-weight:600;color:var(--muted)}
-.who button.on{background:var(--accent);border-color:var(--accent);color:#fff}
-/* ---------- the jar: stock level as fill, never as red ---------- */
-.jarbtn{width:44px;height:44px;display:grid;place-items:center;flex:0 0 auto;border-radius:10px}
-.jar{width:26px;height:32px;border:1.5px solid var(--line);border-radius:5px 5px 9px 9px;background:#fff;position:relative;overflow:hidden}
-.jar i{position:absolute;left:0;right:0;bottom:0;display:block;transition:height .22s ease-out,background .22s}
-.jar.plenty i{height:82%;background:var(--accent)}
-.jar.low    i{height:30%;background:var(--low)}
-.jar.out    {border-style:dashed;border-color:#c9c2b4}
-.jar.out    i{height:0}
-.stock-low{color:var(--low);font-weight:600}
-.stock-out{color:var(--muted);font-weight:600}
-.restocking{background:var(--accent-soft);transition:background .2s}
+#video{width:100%;border-radius:var(--r-group);background:#000;aspect-ratio:4/3;object-fit:cover}
+.progress{height:4px;background:var(--surface-2);border-radius:99px;overflow:hidden;margin-top:12px}
+.progress i{display:block;height:100%;background:var(--tint);width:0;transition:width .25s}
+.line{display:flex;align-items:center;gap:12px;padding:8px 0;min-height:44px;position:relative}
+.line.off .lname input,.line.off .lprice{color:var(--label-2)}
+.chk{width:22px;height:22px;border-radius:50%;border:1.6px solid var(--label-3);flex:0 0 auto;display:grid;place-items:center;background:none;color:#fff;font-size:12px;transition:background .18s,border-color .18s}
+.line.on .chk{background:var(--tint);border-color:var(--tint)}
+.lname{flex:1;min-width:0}
+.lname input{border:0;background:transparent;width:100%;padding:2px 0;font-size:17px;letter-spacing:-.4px}
+.lprice{font-variant-numeric:tabular-nums;font-size:17px;display:flex;align-items:center;color:var(--label)}
+.whosum{display:block;text-align:left;padding:0 0 9px 34px;font-size:13px;letter-spacing:0;color:var(--tint)}
+.who{display:flex;gap:6px;flex-wrap:wrap;padding:0 0 11px 34px}
+.who button{border:1px solid var(--tint);background:none;color:var(--tint);border-radius:999px;padding:4px 11px;font-size:13px;letter-spacing:0;min-height:30px}
+.who button.on{background:var(--tint);color:var(--on-tint)}
+.totrow{display:flex;justify-content:space-between;gap:12px;padding:9px 0;font-size:17px;position:relative}
+.totrow:not(:last-child)::after{content:"";position:absolute;left:0;right:calc(-1 * var(--inset));bottom:0;height:.5px;background:var(--separator)}
+.totrow span:last-child,.totrow b:last-child{font-variant-numeric:tabular-nums}
+.totrow.big{font-weight:600}
+.storemark{width:29px;height:29px;border-radius:var(--r-icon);background:var(--surface-2);display:grid;place-items:center;flex:0 0 auto;color:var(--label-2)}
+.storemark svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 
-/* ---------- have / need ---------- */
-.segpill{display:flex;background:#efece4;border-radius:999px;padding:3px;gap:3px;height:38px}
-.segpill button{flex:1;border-radius:999px;font-size:13px;font-weight:650;color:var(--muted);transition:background .18s,color .18s}
-.segpill button.on{background:var(--card);color:var(--ink);box-shadow:var(--shadow)}
-.segpill .cnt{font-variant-numeric:tabular-nums}
-.segpill button.on .cnt.need{color:var(--accent)}
-.cathead{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);padding:12px 0 3px}
+/* ---------- the jar: stock as fill ---------- */
+.jarbtn{width:44px;height:44px;display:grid;place-items:center;flex:0 0 auto;margin-right:-10px}
+.jar{width:22px;height:26px;border:1.7px solid var(--label-3);border-radius:4px 4px 7px 7px;position:relative;overflow:hidden}
+.jar i{position:absolute;left:0;right:0;bottom:0;display:block;transition:height .35s cubic-bezier(.34,1.3,.64,1),background .2s}
+.jar.plenty i{height:80%;background:var(--tint)}
+.jar.low i{height:28%;background:var(--warning)}
+.jar.out i{height:0}
+.stock-low{color:var(--warning)}
+.stock-out{color:var(--label-2)}
 
-/* ---------- seesaw balance ---------- */
-.see{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
-.see:last-of-type{border-bottom:0}
-.seetrack{flex:1;height:6px;background:#efece4;border-radius:999px;position:relative;min-width:40px}
-.seetrack::after{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--line)}
-.seetrack i{position:absolute;top:0;bottom:0;border-radius:999px;display:block}
-.seeamt{width:78px;text-align:right;font-variant-numeric:tabular-nums;font-weight:700;font-size:15px}
-.seeamt small{display:block;font-size:11px;font-weight:500;color:var(--muted)}
-.storepill{display:inline-flex;align-items:center;gap:6px;background:#efece4;color:var(--muted);border-radius:999px;padding:6px 12px;font-size:12.5px;font-weight:600;max-width:100%}
-.storepill input{border:0;background:transparent;font:inherit;color:var(--ink);min-width:60px;flex:1;padding:0}
-.storemark{width:42px;height:42px;border-radius:12px;background:var(--accent-soft);display:grid;place-items:center;font-size:21px;flex:0 0 auto}
-.seg{display:flex;background:#efece4;border-radius:11px;padding:3px;gap:3px}
-.seg button{flex:1;padding:7px 8px;border-radius:8px;font-size:13px;font-weight:640;color:var(--muted)}
-.seg button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(29,27,22,.10)}
-.wrow{display:flex;align-items:center;gap:9px;padding:5px 0}
-.wrow .nm{flex:1;font-size:13.5px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.wrow input[type=range]{flex:1.4;accent-color:var(--accent);min-width:0}
-.wpct{width:56px;text-align:right;font-variant-numeric:tabular-nums;font-weight:700;font-size:13.5px}
-.totrow{display:flex;justify-content:space-between;padding:5px 0;font-size:13.5px}
-.totrow.big{font-size:16px;font-weight:700;border-top:1px solid var(--line);margin-top:6px;padding-top:9px}
+/* ---------- segmented control ---------- */
+.seg,.segpill{display:flex;background:var(--surface-2);border-radius:9px;padding:2px;gap:2px;height:32px}
+.seg button,.segpill button{flex:1;border-radius:var(--r-control);font-size:13px;font-weight:600;letter-spacing:-.1px;color:var(--label);opacity:.55;transition:opacity .2s}
+.seg button.on,.segpill button.on{background:var(--surface);opacity:1;box-shadow:var(--shadow-thumb)}
+@media (prefers-color-scheme:dark){.seg button.on,.segpill button.on{background:#636366}}
+.cathead{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--label-2);padding:18px 0 4px}
+.wrow{display:flex;align-items:center;gap:12px;padding:7px 0;min-height:44px}
+.wrow .nm{flex:0 0 auto;width:76px;font-size:15px;letter-spacing:-.2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wrow input[type=range]{flex:1;accent-color:var(--tint);min-width:0}
+.wpct{width:52px;text-align:right;font-variant-numeric:tabular-nums;font-weight:600;font-size:15px}
 
-/* ---------- spending ---------- */
-.bar{height:9px;border-radius:99px;background:#efece4;overflow:hidden;margin-top:5px}
-.bar i{display:block;height:100%;background:var(--accent)}
-.stat{display:flex;gap:10px}
-.stat>div{flex:1;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:11px}
-.stat .n{font-size:21px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
-.stat .l{font-size:11.5px;color:var(--muted);margin-top:1px}
+/* ---------- balances ---------- */
+.bignum{font-size:34px;line-height:41px;font-weight:700;letter-spacing:-.5px;font-variant-numeric:tabular-nums;padding:12px 0 0}
+.see{display:flex;align-items:center;gap:12px;padding:9px 0;min-height:52px;position:relative}
+.see:not(:last-child)::after{content:"";position:absolute;left:41px;right:calc(-1 * var(--inset));bottom:0;height:.5px;background:var(--separator)}
+.seetrack{flex:1;height:4px;background:var(--surface-2);border-radius:999px;position:relative;min-width:36px}
+.seetrack::after{content:"";position:absolute;left:50%;top:-3px;bottom:-3px;width:.5px;background:var(--separator)}
+.seetrack i{position:absolute;top:0;bottom:0;border-radius:999px;display:block;transition:width .4s cubic-bezier(.32,.72,0,1)}
+.seeamt{width:88px;text-align:right;font-variant-numeric:tabular-nums;font-weight:600;font-size:17px;line-height:20px}
+.seeamt small{display:block;font-size:11px;font-weight:400;letter-spacing:0;color:var(--label-2)}
+.bar{height:4px;border-radius:999px;background:var(--surface-2);overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;background:var(--tint)}
+.stat{display:flex}
+.stat>div{flex:1;padding:14px 0}
+.stat .n{font-size:22px;font-weight:700;letter-spacing:-.3px;font-variant-numeric:tabular-nums}
+.stat .l{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--label-2);margin-bottom:3px}
 
-/* ---------- tabbar ---------- */
-.tabbar{flex:0 0 auto;position:relative;background:rgba(255,253,249,.94);backdrop-filter:blur(12px);border-top:1px solid var(--line);z-index:50;padding-bottom:env(safe-area-inset-bottom)}
-.tabbar .wrap{display:flex;height:62px}
-.tabbar button{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--muted);font-size:10.5px;font-weight:600}
-.tabbar button.on{color:var(--accent)}
-.tabbar svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+/* ---------- tab bar ---------- */
+.tabbar{flex:0 0 auto;position:relative;background:var(--material);backdrop-filter:blur(20px) saturate(1.8);border-top:.5px solid var(--separator);z-index:50;padding-bottom:env(safe-area-inset-bottom)}
+.tabbar .wrap{display:flex;height:49px;padding:0}
+.tabbar button{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--label-2);font-size:10px;font-weight:500;letter-spacing:.1px}
+.tabbar button.on{color:var(--tint)}
+.tabbar svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 
-/* ---------- signin / modal ---------- */
-.center{min-height:100%;display:grid;place-items:center;padding:24px}
-.hero{text-align:center;max-width:340px}
-.hero .mark{width:60px;height:60px;border-radius:18px;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:30px;margin:0 auto 16px}
-.cover{margin:0 auto 6px;line-height:0}
-.cover .bob{animation:bob 4.5s ease-in-out infinite;transform-origin:100px 110px}
-.cover .fleck{animation:drift 5.5s ease-in-out infinite}
-.cover .f2{animation-delay:-1.4s}.cover .f3{animation-delay:-2.6s}.cover .f4{animation-delay:-3.7s}
-@keyframes bob{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-5px) rotate(-1.1deg)}}
-@keyframes drift{0%,100%{transform:translateY(0);opacity:.75}50%{transform:translateY(-6px);opacity:1}}
-@media (prefers-reduced-motion:reduce){.cover .bob,.cover .fleck{animation:none}}
-.modal{position:fixed;inset:0;background:rgba(29,27,22,.42);z-index:100;display:grid;place-items:end center}
-.sheet{background:var(--card);width:100%;max-width:520px;border-radius:18px 18px 0 0;padding:18px 16px calc(22px + env(safe-area-inset-bottom));max-height:88dvh;overflow:auto}
-.toast{position:fixed;bottom:84px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:9px 15px;border-radius:99px;font-size:13px;z-index:200;opacity:0;transition:opacity .2s;pointer-events:none}
+/* ---------- gates, sheets, toast ---------- */
+.center{min-height:100%;display:grid;place-items:center;padding:24px var(--inset)}
+.hero{text-align:center;max-width:360px;width:100%}
+.hero .mark{width:76px;height:76px;border-radius:17.5px;background:var(--tint);display:grid;place-items:center;margin:0 auto 20px}
+.hero .mark svg{width:42px;height:42px;display:block}
+.hero h1{font-size:28px;line-height:34px}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:100;display:grid;place-items:end center;animation:scrim .25s linear}
+.sheet{background:var(--surface);width:100%;max-width:520px;border-radius:var(--r-sheet) var(--r-sheet) 0 0;padding:24px var(--inset) calc(24px + env(safe-area-inset-bottom));max-height:88dvh;overflow:auto;box-shadow:var(--shadow-sheet);position:relative;animation:sheetup .42s cubic-bezier(.32,.72,0,1)}
+.sheet::before{content:"";position:absolute;top:8px;left:50%;transform:translateX(-50%);width:36px;height:5px;border-radius:99px;background:var(--label-3)}
+.sheet h2{font-size:22px;line-height:28px;font-weight:700;letter-spacing:-.3px;margin-bottom:2px}
+@keyframes sheetup{from{transform:translateY(100%)}to{transform:translateY(0)}}
+@keyframes scrim{from{opacity:0}to{opacity:1}}
+.toast{position:fixed;bottom:78px;left:50%;transform:translateX(-50%);background:rgba(28,28,30,.94);backdrop-filter:blur(20px);color:#fff;padding:11px 18px;border-radius:999px;font-size:15px;letter-spacing:-.2px;z-index:200;opacity:0;transition:opacity .2s;pointer-events:none}
 .toast.on{opacity:1}
+.restocking{background:var(--tint-soft)}
+.spin{animation:spin 1s steps(8) infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 
-/* ---------- desktop: sit the phone-width app in a proper frame ---------- */
 @media (min-width:900px){
-  body{ background:#ece8e0; }
-  #app{
-    max-width:520px;margin:26px auto;background:var(--bg);
-    border:1px solid #dcd6ca;border-radius:26px;overflow:hidden;
-    box-shadow:0 20px 60px rgba(29,27,22,.13);
-    height:min(880px, calc(100dvh - 52px));
-  }
-  .topbar{background:var(--card)}
-  .toast{bottom:96px}
-  .modal{place-items:center}
-  .sheet{border-radius:18px;max-width:460px;max-height:76dvh}
+  body{background:#E5E5EA}
+  #app{max-width:430px;margin:24px auto;border-radius:38px;overflow:hidden;height:min(880px,calc(100dvh - 48px));box-shadow:0 24px 70px rgba(0,0,0,.18)}
 }
-/* keyboard focus that doesn't look like a bug */
-button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(--tint);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
@@ -201,61 +211,21 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
 <!-- ══════════════ SIGN IN ══════════════ -->
 <section id="signin" class="center" data-ref="signin-screen">
   <div class="hero">
-    <div class="cover" data-ref="app-cover">
-      <svg viewBox="0 0 200 170" width="184" height="156" role="img" aria-label="A grocery bag full of shopping">
-        <!-- soft backdrop -->
-        <circle cx="100" cy="86" r="66" fill="var(--accent-soft)"/>
-        <circle class="fleck f1" cx="38"  cy="42"  r="3.4" fill="#d8c9a8"/>
-        <circle class="fleck f2" cx="166" cy="52"  r="2.6" fill="#e3b7a0"/>
-        <circle class="fleck f3" cx="158" cy="122" r="3"   fill="#cfd9cf"/>
-        <circle class="fleck f4" cx="44"  cy="120" r="2.2" fill="#dcc9b4"/>
-
-        <g class="bob">
-          <!-- greens -->
-          <g transform="translate(50 32) scale(1.15)">
-            <path d="M12 30C2 26 0 14 6 6c5-7 15-6 19 1 3-6 13-8 18-2 6 7 4 19-6 24z" fill="#3f9468"/>
-            <path d="M14 30c-3-9-2-17 3-24" stroke="#2f7d55" stroke-width="2.2" fill="none" stroke-linecap="round"/>
-          </g>
-          <!-- baguette -->
-          <g transform="rotate(-14 132 44)">
-            <rect x="120" y="22" width="17" height="48" rx="8.5" fill="#dfae70"/>
-            <path d="M126 32l6 5M126 42l6 5M126 52l6 5" stroke="#c1904f" stroke-width="2" stroke-linecap="round"/>
-          </g>
-          <!-- milk carton -->
-          <g transform="translate(96 30)">
-            <path d="M0 16h26v40a4 4 0 0 1-4 4H4a4 4 0 0 1-4-4z" fill="#fffdf9" stroke="#e0dacd" stroke-width="1.6"/>
-            <path d="M0 16 13 4l13 12z" fill="#f2efe6" stroke="#e0dacd" stroke-width="1.6" stroke-linejoin="round"/>
-            <rect x="6" y="30" width="14" height="4" rx="2" fill="#cfe0d5"/>
-          </g>
-          <!-- the bag -->
-          <path d="M46 74h108l-8 66a10 10 0 0 1-10 9H64a10 10 0 0 1-10-9z" fill="#d9a86f"/>
-          <path d="M46 74h108l-2 15H48z" fill="#c8945c"/>
-          <path d="M74 74c0-12 10-21 26-21s26 9 26 21" fill="none" stroke="#c8945c" stroke-width="4" stroke-linecap="round"/>
-          <!-- a small face, because she asked for cute -->
-          <g class="face">
-            <circle cx="84"  cy="112" r="3.1" fill="#7a5327"/>
-            <circle cx="116" cy="112" r="3.1" fill="#7a5327"/>
-            <path d="M92 121q8 7 16 0" stroke="#7a5327" stroke-width="2.6" fill="none" stroke-linecap="round"/>
-            <circle cx="74"  cy="120" r="4.6" fill="#e8a08a" opacity=".55"/>
-            <circle cx="126" cy="120" r="4.6" fill="#e8a08a" opacity=".55"/>
-          </g>
-        </g>
-      </svg>
-    </div>
-    <h1 style="font-size:27px;letter-spacing:-.025em">HouseCart</h1>
-    <p class="sub" style="margin:8px 0 22px">Scan the groceries. Snap the receipt. Split only what's shared. Get paid back on Venmo.</p>
+    <div class="mark" data-ref="app-cover"><svg viewBox="0 0 48 48" aria-hidden="true"><g fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 16h30l-2.6 24a3 3 0 0 1-3 2.6H14.6a3 3 0 0 1-3-2.6z"/><path d="M17 16v-3a7 7 0 0 1 14 0v3"/><path d="M9 24h30"/></g></svg></div>
+    <h1>HouseCart</h1>
+    <p class="sub" style="margin:8px 0 26px;font-size:15px;letter-spacing:-.2px">Split groceries with your house.</p>
     <div id="gsi-btn" data-ref="google-signin" style="display:flex;justify-content:center;min-height:44px"></div>
     <p class="sub" id="gsi-note" style="margin-top:14px;font-size:11.5px"></p>
 
     <!-- shown only until a client ID exists in config.js -->
     <div id="gsi-setup" class="hide" style="text-align:left;margin-top:4px">
       <div class="card" style="margin:0">
-        <div class="row" style="margin-bottom:6px"><span class="tag" style="background:#fbeee6;color:var(--warn)">setup needed</span></div>
+        <div class="row" style="margin-bottom:6px"><span class="tag" style="background:#fbeee6;color:var(--warning)">setup needed</span></div>
         <h2 style="font-size:14px">Add your Google client ID</h2>
         <p class="sub" style="margin:4px 0 10px">Sign-in is off until <code>config.js</code> has an OAuth Web client ID. Create one at
           <b>console.cloud.google.com → APIs &amp; Services → Credentials</b>, then paste it into <code>config.js</code> and push.</p>
         <p class="sub" style="margin-bottom:4px"><b>Authorized JavaScript origins</b> must contain exactly these:</p>
-        <div id="origins" style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;background:#f3f0e9;border:1px solid var(--line);border-radius:9px;padding:9px 10px;word-break:break-all;line-height:1.7"></div>
+        <div id="origins" style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;background:#f3f0e9;border:1px solid var(--separator);border-radius:9px;padding:9px 10px;word-break:break-all;line-height:1.7"></div>
         <button class="btn ghost sm" id="btn-copy-origin" style="margin-top:9px">Copy this origin</button>
       </div>
     </div>
@@ -265,12 +235,12 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
 <!-- ══════════════ HOUSE GATE ══════════════ -->
 <section id="housegate" class="center hide" data-ref="house-gate">
   <div class="hero" style="max-width:360px;width:100%">
-    <div class="mark">🏠</div>
-    <h1 style="font-size:23px">Join a household</h1>
+    <div class="mark"><svg viewBox="0 0 48 48" aria-hidden="true"><g fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 22 24 8l17 14"/><path d="M11 20v20h26V20"/><path d="M20 40V28h8v12"/></g></svg></div>
+    <h1 style="font-size:28px;line-height:34px">Join a household</h1>
     <p class="sub" style="margin:8px 0 18px">Everyone in the house shares one code.</p>
     <input class="field" id="join-code" data-ref="house-code-input" placeholder="HOUSE CODE" maxlength="12" style="text-align:center;text-transform:uppercase;letter-spacing:.14em;font-weight:700">
     <button class="btn" id="btn-join" data-ref="join-house-btn">Join house</button>
-    <div class="row" style="margin:16px 0 12px"><div style="flex:1;height:1px;background:var(--line)"></div><span class="sub">or</span><div style="flex:1;height:1px;background:var(--line)"></div></div>
+    <div class="row" style="margin:16px 0 12px"><div style="flex:1;height:1px;background:var(--separator)"></div><span class="sub">or</span><div style="flex:1;height:1px;background:var(--separator)"></div></div>
     <input class="field" id="new-house" placeholder="New house name — “Maple St”">
     <button class="btn ghost" id="btn-create" data-ref="create-house-btn">Create a house</button>
     <p class="sub" id="mine" style="margin-top:16px"></p>
@@ -280,8 +250,8 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
 <!-- ══════════════ WAITING FOR APPROVAL ══════════════ -->
 <section id="waiting" class="center hide" data-ref="waiting-screen">
   <div class="hero" style="max-width:340px">
-    <div class="mark" style="background:var(--accent-soft);color:var(--accent)">⏳</div>
-    <h1 style="font-size:21px">Waiting to be let in</h1>
+    <div class="mark" style="background:var(--surface-2)"><svg class="spin" viewBox="0 0 48 48" aria-hidden="true"><g stroke="var(--label-3)" stroke-width="3.4" stroke-linecap="round"><line x1="24" y1="8" x2="24" y2="15" transform="rotate(0 24 24)" opacity="0.25"/><line x1="24" y1="8" x2="24" y2="15" transform="rotate(45 24 24)" opacity="0.36"/><line x1="24" y1="8" x2="24" y2="15" transform="rotate(90 24 24)" opacity="0.46"/><line x1="24" y1="8" x2="24" y2="15" transform="rotate(135 24 24)" opacity="0.57"/><line x1="24" y1="8" x2="24" y2="15" transform="rotate(180 24 24)" opacity="0.68"/><line x1="24" y1="8" x2="24" y2="15" transform="rotate(225 24 24)" opacity="0.79"/><line x1="24" y1="8" x2="24" y2="15" transform="rotate(270 24 24)" opacity="0.89"/><line x1="24" y1="8" x2="24" y2="15" transform="rotate(315 24 24)" opacity="1.00"/></g></svg></div>
+    <h1 style="font-size:22px;line-height:28px">Waiting to be let in</h1>
     <p class="sub" id="waiting-note" style="margin:9px 0 18px"></p>
     <button class="btn" id="btn-recheck" data-ref="recheck-btn">Check again</button>
     <button class="btn ghost" id="btn-cancel-req" style="margin-top:8px">Cancel request</button>
@@ -292,23 +262,25 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
 <div id="app" class="hide">
   <header class="topbar">
     <div class="wrap">
-      <button class="logo" id="btn-home" data-ref="logo-home" aria-label="Back to pantry"><span class="dot">🧺</span> HouseCart</button>
+      <button class="logo" id="btn-home" data-ref="logo-home" aria-label="Back to pantry"><span class="dot"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 8h15l-1.3 12a1.5 1.5 0 0 1-1.5 1.3H7.3A1.5 1.5 0 0 1 5.8 20zM8.5 8V6.5a3.5 3.5 0 0 1 7 0V8"/></svg></span> HouseCart</button>
       <div class="spacer"></div>
-      <button class="housepill" id="house-switch" data-ref="house-switcher"><span id="house-name">—</span><span class="code" id="house-code">—</span> ▾</button>
+      <button class="housepill" id="house-switch" data-ref="house-switcher"><span id="house-name">—</span><span class="code" id="house-code" hidden>—</span> ▾</button>
       <button class="avatar" id="me-av" data-ref="me-avatar" aria-label="Your account"></button>
     </div>
   </header>
 
   <main class="wrap">
+      <h1 class="ltitle" id="screen-title">Pantry</h1>
+      <div class="lsub" id="screen-sub"></div>
     <!-- ── PANTRY ── -->
     <section id="tab-pantry" data-ref="pantry-tab">
       <div id="approvals" class="hide" data-ref="join-requests"></div>
       <div class="card">
         <h2>Add groceries</h2>
-        <p class="sub">Scan a barcode and we'll pull the name, size and photo automatically.</p>
+        <p class="sub" style="padding-bottom:2px">Scanning pulls the name, size and photo automatically.</p>
         <div class="row" style="margin-top:11px">
-          <button class="btn" id="btn-scan" data-ref="scan-barcode-btn">📷 Scan barcode</button>
-          <button class="btn ghost" id="btn-manual" data-ref="add-manual-btn" style="width:auto;white-space:nowrap">✍️ Manual</button>
+          <button class="btn" id="btn-scan" data-ref="scan-barcode-btn">Scan barcode</button>
+          <button class="btn ghost" id="btn-manual" data-ref="add-manual-btn" style="width:auto;white-space:nowrap">Manual</button>
         </div>
         <div id="scanbox" class="hide" style="margin-top:11px">
           <video id="video" playsinline muted></video>
@@ -331,7 +303,7 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
       <div class="card" id="receipt-intro">
         <h2>Scan a receipt</h2>
         <p class="sub">We read the line items, then <b>you</b> choose which ones the house splits. Anything you don't tick stays 100% yours.</p>
-        <label class="btn" style="margin-top:11px" data-ref="scan-receipt-btn">📄 Photograph receipt
+        <label class="btn" style="margin-top:11px" data-ref="scan-receipt-btn">Photograph receipt
           <input type="file" id="receipt-file" accept="image/*" capture="environment" class="hide"></label>
         <div id="ocr-prog" class="hide"><div class="progress"><i id="ocr-bar"></i></div><p class="sub" id="ocr-note" style="margin-top:6px">Reading receipt…</p></div>
       </div>
@@ -339,7 +311,7 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
       <div id="receipt-edit" class="hide">
         <div class="card" data-ref="store-card">
           <div class="row">
-            <div class="storemark" id="store-mark">🏬</div>
+            <div class="storemark" id="store-mark"></div>
             <div style="flex:1;min-width:0">
               <label class="sub" style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase">Store</label>
               <input id="store-name" data-ref="store-name-input" placeholder="Which store?" style="border:0;background:transparent;font-size:16px;font-weight:700;width:100%;padding:1px 0;letter-spacing:-.01em">
@@ -349,7 +321,7 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
         </div>
 
         <div class="card">
-          <div class="row"><h2 style="flex:1">Split shared items…</h2></div>
+          <div class="row"><h2 style="flex:1">Split</h2></div>
           <div class="seg" style="margin-top:8px">
             <button data-mode="even" class="on" data-ref="split-even">Evenly</button>
             <button data-mode="custom" data-ref="split-custom">By percentage</button>
@@ -358,15 +330,16 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
         </div>
 
         <div class="card">
-          <div class="row"><h2 style="flex:1">Which items does the house split?</h2><button class="btn ghost sm" id="btn-all">All</button><button class="btn ghost sm" id="btn-none">None</button></div>
-          <p class="sub" style="margin-bottom:4px">Tap the box to include an item · tap the name to fix the OCR · tap <b>split N ways</b> to change who shares it. <span class="tag" id="split-count" style="margin-left:2px">—</span></p>
+          <div class="row"><h2 style="flex:1">Items</h2><button class="btn plain" id="btn-all" style="width:auto">All</button><button class="btn plain" id="btn-none" style="width:auto">None</button></div>
+          <p class="sub" style="padding-bottom:4px">Tick what the house shares. Names and prices are editable — OCR gets things wrong. <span class="tag" id="split-count">—</span></p>
           <div id="lines" data-ref="receipt-lines"></div>
         </div>
         <div class="card" data-ref="split-summary">
           <h2>The split</h2>
           <div id="summary"></div>
         </div>
-        <button class="btn" id="btn-settle" data-ref="settle-btn">Save trip →</button>
+        <button class="btn" id="btn-settle" data-ref="settle-btn">Save trip</button>
+        <button class="btn ghost" id="btn-discard" data-ref="discard-btn" style="margin-top:8px">Discard this receipt</button>
         <div style="height:14px"></div>
       </div>
     </section>
@@ -377,7 +350,7 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
         <h2 id="bal-head">You're all square.</h2>
         <p class="sub" style="margin-bottom:6px">Balances carry over between trips. Settle whenever it feels right — or never, we're not your accountant.</p>
         <div id="seesaw"></div>
-        <div id="venmo-nudge" class="hide" style="margin-top:12px;border-top:1px solid var(--line);padding-top:11px">
+        <div id="venmo-nudge" class="hide" style="margin-top:12px;border-top:1px solid var(--separator);padding-top:11px">
           <p class="sub" style="margin-bottom:7px">Add your Venmo handle so getting paid back doesn't require a conversation.</p>
           <button class="btn sm" id="btn-nudge-venmo" data-ref="venmo-nudge-btn">Link @handle</button>
         </div>
@@ -455,7 +428,12 @@ const DB = {
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const money = n => "$" + (Math.round(n*100)/100).toFixed(2);
-const initials = n => n.split(/\s+/).map(w=>w[0]).join("").slice(0,2).toUpperCase();
+const initials = n => (n||"?").split(/\s+/).map(w=>w[0]).join("").slice(0,2).toUpperCase();
+/* Every name here is attacker-reachable: Google display names, OCR'd item text,
+   join requests written straight to Firestore. All of it lands in innerHTML. */
+const esc = v => String(v == null ? "" : v)
+  .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+  .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
 function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("on"); clearTimeout(t._x); t._x=setTimeout(()=>t.classList.remove("on"),2200); }
 function sheet(html){ $("#sheet").innerHTML = html; $("#modal").classList.remove("hide"); }
 function closeSheet(){ $("#modal").classList.add("hide"); }
@@ -566,14 +544,17 @@ function signIn(p){
   me = p; save();
   if(CLOUD()){
     houses = {};
+    let landed = false;
     window.HC_SYNC.watchHouses(p.id, houses, err => {
       if(err) return;
-      // land in a house as soon as one shows up
-      if(!cur || !houses[cur]){
+      // Land in a house only on the FIRST population. Doing it on every
+      // snapshot teleports you out of the join gate mid-keystroke whenever a
+      // housemate touches anything.
+      if(!landed && (!cur || !houses[cur])){
         const first = Object.keys(houses)[0];
-        if(first){ cur = first; pendingCode = null; pendingInfo = null; DB.set("pending", null); save(); }
+        if(first){ cur = first; landed = true; pendingCode = null; pendingInfo = null; DB.set("pending", null); }
       }
-      route();
+      save(); route();
     });
     if(pendingInfo){ pendingCode = pendingInfo.code; watchRequest(); }
     route();
@@ -612,13 +593,22 @@ function newCode(){
   let c; do { c = CODE_WORDS[Math.floor(Math.random()*CODE_WORDS.length)] + Math.floor(Math.random()*90+10); } while(houses[c]);
   return c;
 }
-$("#btn-create").onclick = () => {
+$("#btn-create").onclick = async () => {
   const name = $("#new-house").value.trim() || "My house";
-  const code = newCode();
-  houses[code] = { code, name, adminId: me.id, pantry:[], trips:[], pending:[],
-    members:[{...me, venmo: me.venmo||""}] };
+  let code = newCode();
+  if(CLOUD()){
+    // check the code against the SERVER, not just this browser — otherwise two
+    // households can mint the same code and the second one breaks on the rules
+    try {
+      for(let i = 0; i < 12 && await window.HC_SYNC.codeTaken(code); i++) code = newCode();
+    } catch(e){ /* offline: fall through with the local code */ }
+  }
+  const member = {...me, venmo: me.venmo||""};
+  houses[code] = { code, name, adminId: me.id, pantry:[], trips:[], pending:[], payments:[],
+    members:[member] };
   cur = code; save(); route();
   toast("House created — code " + code);
+  await cloud("createHouse", code, name, member);
 };
 
 /* Joining is a REQUEST. Only the member who created the house can approve it,
@@ -650,14 +640,23 @@ let unwatchReq = null;
 function watchRequest(){
   if(!CLOUD() || !pendingCode) return;
   if(unwatchReq){ try{unwatchReq()}catch(e){} }
-  unwatchReq = window.HC_SYNC.watchMyRequest(me.id, pendingCode, req => {
-    if(req) return;                                   // still waiting
+  unwatchReq = window.HC_SYNC.watchMyRequest(me.id, pendingCode, (req, err) => {
+    if(err || req) return;              // an error is not a decision; keep waiting
     const code = pendingCode;
-    // request gone: either we're in the house now, or we were declined
-    setTimeout(() => {
-      if(houses[code]){ pendingCode = null; pendingInfo = null; DB.set("pending", null); cur = code; save(); route(); toast("You're in!"); }
-      else { pendingCode = null; pendingInfo = null; DB.set("pending", null); route(); toast("That request was declined"); }
-    }, 600);
+    // The request doc vanishing means approved OR declined. Approval also sends
+    // the house down a second listener that can lag, so wait for it before
+    // calling it a denial — up to ~6s, checked every 400ms.
+    let tries = 0;
+    const settle = () => {
+      if(houses[code]){
+        pendingCode = null; pendingInfo = null; DB.set("pending", null);
+        cur = code; save(); route(); toast("You're in!"); return;
+      }
+      if(++tries < 15) return setTimeout(settle, 400);
+      pendingCode = null; pendingInfo = null; DB.set("pending", null);
+      save(); route(); toast("That request was declined");
+    };
+    settle();
   });
 }
 
@@ -701,12 +700,12 @@ function renderApprovals(){
   const reqs = (isAdmin(h) ? (h.pending||[]) : []);
   box.classList.toggle("hide", reqs.length === 0);
   if(!reqs.length) return;
-  box.innerHTML = `<div class="card" style="border-color:var(--accent)">
+  box.innerHTML = `<div class="card" style="border-color:var(--tint)">
     <div class="row"><h2 style="flex:1">${reqs.length} ${reqs.length===1?'person wants':'people want'} to join</h2><span class="tag">admin</span></div>
     <p class="sub" style="margin-bottom:6px">They typed the code. You decide whether they're actually your housemate.</p>
     ${reqs.map(r=>`<div class="itemrow">
-      <div class="avatar" style="width:40px;height:40px;font-size:14px">${r.pic?`<img src="${r.pic}">`:initials(r.name)}</div>
-      <div style="flex:1;min-width:0"><div class="iname">${r.name}</div><div class="imeta">${r.email||""}</div></div>
+      <div class="avatar" style="width:40px;height:40px;font-size:14px">${r.pic?`<img src="${esc(r.pic)}">`:initials(r.name)}</div>
+      <div style="flex:1;min-width:0"><div class="iname">${esc(r.name)}</div><div class="imeta">${esc(r.email||"")}</div></div>
       <button class="btn sm" onclick="approveJoin('${h.code}','${r.id}')" data-ref="approve-btn">Approve</button>
       <button class="btn ghost sm" onclick="denyJoin('${h.code}','${r.id}')" data-ref="deny-btn">Deny</button>
     </div>`).join("")}</div>`;
@@ -715,25 +714,25 @@ $("#house-switch").onclick = () => {
   const mine = Object.values(houses).filter(h=>h.members.some(m=>m.id===me.id));
   sheet(`<h2>Your households</h2><p class="sub" style="margin-bottom:8px">Spending is tracked separately for each.</p>` +
     mine.map(h=>`<div class="itemrow" style="cursor:pointer" onclick="switchHouse('${h.code}')">
-      <div class="thumb" style="font-size:20px">🏠</div>
-      <div style="flex:1"><div class="iname">${h.name} ${h.code===cur?'<span class="tag">current</span>':''}</div>
-      <div class="imeta">${h.members.length} housemates · code <b>${h.code}</b> · ${h.trips.length} trips${(h.pending||[]).length && isAdmin(h) ? ` · <span style="color:var(--warn)"><b>${h.pending.length}</b> waiting</span>`:''}</div></div></div>`).join("") +
+      <div class="thumb"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7M5 10v10h14V10"/></svg></div>
+      <div style="flex:1"><div class="iname">${esc(h.name)} ${h.code===cur?'<span class="tag">current</span>':''}</div>
+      <div class="imeta">${h.members.length} housemates · code <b>${h.code}</b> · ${h.trips.length} trips${(h.pending||[]).length && isAdmin(h) ? ` · <span style="color:var(--warning)"><b>${h.pending.length}</b> waiting</span>`:''}</div></div></div>`).join("") +
     `<button class="btn ghost" style="margin-top:12px" onclick="closeSheet();leaveToGate()">+ Join or create another house</button>
-     <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px">
+     <div style="margin-top:14px;border-top:1px solid var(--separator);padding-top:12px">
        <h2 style="font-size:14px">Housemates</h2>
        <p class="sub" style="margin-bottom:6px">${adminOf(H()).name}${isAdmin(H())?' (you)':''} set this house up, so ${isAdmin(H())?'you approve':'they approve'} anyone who asks to join.</p>
-       ${H().members.map(m=>`<div class="totrow"><span>${m.name}${m.id===H().adminId?' <span class="tag" style="font-size:9.5px">admin</span>':''}</span><span class="sub">${m.id===me.id?'you':''}</span></div>`).join("")}
+       ${H().members.map(m=>`<div class="totrow"><span>${esc(m.name)}${m.id===H().adminId?' <span class="tag" style="font-size:9.5px">admin</span>':''}</span><span class="sub">${m.id===me.id?'you':''}</span></div>`).join("")}
      </div>
-     <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px">
+     <div style="margin-top:14px;border-top:1px solid var(--separator);padding-top:12px">
        <h2 style="font-size:14px">Invite your housemates</h2>
        <p class="sub">Send them this code. They'll ask to join, and ${isAdmin(H())?'you':'the admin'} approves them.</p>
-       <div class="field" style="text-align:center;font-size:24px;font-weight:800;letter-spacing:.18em;color:var(--accent);font-family:ui-monospace,monospace">${cur}</div>
+       <div class="field" style="text-align:center;font-size:24px;font-weight:800;letter-spacing:.18em;color:var(--tint);font-family:ui-monospace,monospace">${cur}</div>
        <div class="row"><button class="btn" id="btn-copy" data-ref="copy-code-btn">Copy code</button><button class="btn ghost" id="btn-share">Share</button></div>
      </div>
-     <div class="row" style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px">
+     <div class="row" style="margin-top:14px;border-top:1px solid var(--separator);padding-top:12px">
        <button class="btn ghost sm" onclick="closeSheet()">Close</button>
        <div class="spacer" style="flex:1"></div>
-       <button class="btn ghost sm" onclick="signOut()" style="color:var(--warn)">Sign out</button>
+       <button class="btn ghost sm" onclick="confirmSignOut()" style="color:var(--negative)">Sign out</button>
      </div>`);
   $("#btn-copy").onclick = async () => {
     const msg = `Join our HouseCart household "${H().name}" with code ${cur}`;
@@ -746,24 +745,31 @@ $("#house-switch").onclick = () => {
     else { try{ await navigator.clipboard.writeText(text + " " + location.href); toast("Invite copied"); }catch(e){ prompt("Send this:", text); } }
   };
 };
+function confirmSignOut(){
+  const local = !CLOUD();
+  if(confirm(local
+      ? "Sign out? This device is the only copy of this house's data, so signing out erases it."
+      : "Sign out of HouseCart?")) signOut();
+}
 function signOut(){
+  if(unwatchReq){ try{ unwatchReq(); }catch(e){} unwatchReq = null; }
   if(CLOUD()){ try{ window.HC_SYNC.stop(); window.HC_SYNC.signOutFirebase(); }catch(e){} }
-  me=null; cur=null; houses={}; pendingCode=null; pendingInfo=null;
+  me=null; cur=null; pendingCode=null; pendingInfo=null;
+  if(CLOUD()) houses={};              // server is the truth; local mode keeps its only copy
   DB.set("pending", null); save(); closeSheet(); route(); toast("Signed out");
 }
 function switchHouse(c){ cur=c; save(); closeSheet(); render(); toast("Switched to "+houses[c].name); }
 function leaveToGate(){ cur=null; save(); route(); }
 
 /* ═══════════ 3. PANTRY — stock, categories, have/need ═══════════ */
+/* Monochrome inline glyphs on the same 24-grid / 1.7px stroke as every other
+   icon. Emoji were inconsistent in weight, vendor-dependent and fought the
+   accent colour for attention. */
+const G = {"produce": "<path d=\"M12 21c-5 0-8-3.5-8-8 0-5 4-9 9-9h5v5c0 5-3.5 9-8.5 9zM7 20c1.5-5 5-8 9-9.5\"/>", "dairy": "<path d=\"M8 3h8M9 3v3l-2 3v11a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V9l-2-3V3M7 12h10\"/>", "meat": "<path d=\"M15.5 3.5a5 5 0 0 0-7 7l-5 5a2.5 2.5 0 1 0 3.5 3.5l5-5a5 5 0 0 0 3.5-10.5z\"/>", "frozen": "<path d=\"M12 2v20M4 7l16 10M20 7L4 17M12 6l-2.5-2.5M12 6l2.5-2.5M12 18l-2.5 2.5M12 18l2.5 2.5\"/>", "pantry": "<path d=\"M6 8h12v12a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1zM6 8l1-4h10l1 4M9 13h6\"/>", "drinks": "<path d=\"M7 4h10l-1 16a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1zM7 9h10M13 4V2\"/>", "household": "<path d=\"M5 8a7 3 0 0 1 14 0v11a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1zM5 8h14M12 5v14\"/>", "other": "<path d=\"M4 8h16l-1.5 11a2 2 0 0 1-2 2h-9a2 2 0 0 1-2-2zM8 8V6a4 4 0 0 1 8 0v2\"/>"};
+const svg = k => `<svg viewBox="0 0 24 24" aria-hidden="true">${G[k]||G.other}</svg>`;
 const CATS = {
-  produce:   {emoji:"🥬", name:"Produce",   bg:"#e6f2ea"},
-  dairy:     {emoji:"🥛", name:"Dairy",     bg:"#faf3e0"},
-  meat:      {emoji:"🍗", name:"Meat",      bg:"#f7e7de"},
-  frozen:    {emoji:"🧊", name:"Frozen",    bg:"#e7eff3"},
-  pantry:    {emoji:"🥫", name:"Pantry",    bg:"#f1ead9"},
-  drinks:    {emoji:"🧃", name:"Drinks",    bg:"#f6ecdc"},
-  household: {emoji:"🧻", name:"Household", bg:"#edebf2"},
-  other:     {emoji:"🧺", name:"Other",     bg:"#efece4"}
+  produce:{name:"Produce"}, dairy:{name:"Dairy"}, meat:{name:"Meat"}, frozen:{name:"Frozen"},
+  pantry:{name:"Pantry"}, drinks:{name:"Drinks"}, household:{name:"Household"}, other:{name:"Other"}
 };
 const CAT_ORDER = ["produce","dairy","meat","frozen","pantry","drinks","household","other"];
 
@@ -820,44 +826,49 @@ function itemRow(i, mode){
   const metaLine = [meta || fallback, stateTxt].filter(Boolean).join(" · ") || "&nbsp;";
   const thumb = i.img
     ? `<img class="thumb" src="${i.img}" alt="">`
-    : `<div class="thumb" style="background:${cat.bg}">${cat.emoji}</div>`;
+    : `<div class="thumb">${svg(i.cat||"other")}</div>`;
   const control = mode === "need"
-    ? `<button class="chk" style="background:#fff;border-color:var(--line)" onclick="restock('${i.id}')" aria-label="Got it — back on the shelf"></button>`
-    : `<button class="jarbtn" onclick="cycleStock('${i.id}')" aria-label="${i.name}: ${STOCK_LABEL[st]||'plenty'}. Tap to change.">
+    ? `<button class="chk" style="background:#fff;border-color:var(--separator)" onclick="restock('${i.id}')" aria-label="Got it — back on the shelf"></button>`
+    : `<button class="jarbtn" onclick="cycleStock('${i.id}')" aria-label="${esc(i.name)}: ${STOCK_LABEL[st]||'plenty'}. Tap to change.">
          <span class="jar ${st}"><i></i></span></button>`;
   return `<div class="itemrow" data-item="${i.id}">
     ${mode === "need" ? control : ""}
     ${thumb}
     <div style="flex:1;min-width:0;cursor:pointer" onclick="itemSheet('${i.id}')">
-      <div class="iname">${i.name}</div><div class="imeta">${metaLine}</div></div>
+      <div class="iname">${esc(i.name)}</div><div class="imeta">${metaLine}</div></div>
     ${mode === "need" ? "" : control}
   </div>`;
 }
 
 function itemSheet(id){
   const i = H().pantry.find(x=>x.id===id); if(!i) return;
-  sheet(`<h2>${i.name}</h2>
+  sheet(`<h2>${esc(i.name)}</h2>
     <p class="sub" style="margin-bottom:10px">${[i.brand,i.size].filter(Boolean).join(" · ")||"added by hand"}</p>
-    <input class="field" id="ed-name" value="${(i.name||"").replace(/"/g,'&quot;')}">
+    <input class="field" id="ed-name" value="${esc(i.name)}">
     <p class="sub" style="margin:8px 0 5px">Category</p>
     <div style="display:flex;gap:6px;flex-wrap:wrap">
-      ${CAT_ORDER.map(k=>`<button class="cat-pick" data-k="${k}" style="border:1px solid ${(i.cat||'other')===k?'var(--accent)':'var(--line)'};background:${(i.cat||'other')===k?'var(--accent-soft)':'#fff'};border-radius:999px;padding:6px 11px;font-size:12px;font-weight:600">${CATS[k].emoji} ${CATS[k].name}</button>`).join("")}
+      ${CAT_ORDER.map(k=>`<button class="cat-pick" data-k="${k}" style="border:1px solid ${(i.cat||'other')===k?'var(--tint)':'var(--separator)'};color:${(i.cat||'other')===k?'var(--tint)':'var(--label-2)'};background:${(i.cat||'other')===k?'var(--tint-soft)':'transparent'};border-radius:999px;padding:7px 13px;font-size:13px;letter-spacing:0;min-height:36px">${CATS[k].name}</button>`).join("")}
     </div>
     <p class="sub" style="margin:12px 0 5px">How much is left?</p>
     <div class="seg">
       ${["plenty","low","out"].map(s=>`<button class="st-pick ${ (i.stock||'plenty')===s ? 'on':''}" data-s="${s}">${s==="plenty"?"Plenty":s==="low"?"Running low":"Out"}</button>`).join("")}
     </div>
     <button class="btn" style="margin-top:14px" id="ed-save">Save</button>
-    <button class="btn ghost" style="margin-top:7px;color:var(--warn)" id="ed-del">Remove from pantry</button>`);
+    <button class="btn ghost" style="margin-top:7px;color:var(--warning)" id="ed-del">Remove from pantry</button>`);
   let cat = i.cat || "other", stock = i.stock || "plenty";
   $$("#sheet .cat-pick").forEach(b=>b.onclick=()=>{ cat=b.dataset.k;
     $$("#sheet .cat-pick").forEach(x=>{ const on=x.dataset.k===cat;
-      x.style.borderColor = on?"var(--accent)":"var(--line)"; x.style.background = on?"var(--accent-soft)":"#fff"; }); });
+      x.style.borderColor = on?"var(--tint)":"var(--separator)";
+      x.style.color = on?"var(--tint)":"var(--label-2)";
+      x.style.background = on?"var(--tint-soft)":"transparent"; }); });
   $$("#sheet .st-pick").forEach(b=>b.onclick=()=>{ stock=b.dataset.s;
     $$("#sheet .st-pick").forEach(x=>x.classList.toggle("on", x.dataset.s===stock)); });
   $("#ed-save").onclick = async () => { i.name = $("#ed-name").value.trim() || i.name; i.cat = cat; i.stock = stock;
     save(); closeSheet(); render(); toast("Updated"); await cloud("putPantry", cur, i); };
-  $("#ed-del").onclick = () => { delItem(i.id); closeSheet(); };
+  $("#ed-del").onclick = () => {
+    if(!confirm(`Remove "${i.name}" from the house pantry?`)) return;
+    delItem(i.id); closeSheet();
+  };
 }
 
 /* ═══════════ 3b. PANTRY — barcode + Open Food Facts ═══════════ */
@@ -929,7 +940,7 @@ $("#btn-manual").onclick = () => sheet(`
   <h2>Add an item</h2>
   <input class="field" id="m-name" placeholder="Oat milk">
   <div class="row"><input class="field" id="m-brand" placeholder="Brand (optional)"><input class="field" id="m-size" placeholder="Size"></div>
-  <label class="btn ghost" style="margin-top:4px">📸 Add a photo<input type="file" id="m-img" accept="image/*" capture="environment" class="hide"></label>
+  <label class="btn ghost" style="margin-top:4px">Add a photo<input type="file" id="m-img" accept="image/*" capture="environment" class="hide"></label>
   <img id="m-prev" class="hide" style="width:100%;max-height:170px;object-fit:cover;border-radius:11px;margin-top:8px">
   <button class="btn" style="margin-top:10px" onclick="addManual()">Add to pantry</button>`);
 document.addEventListener("change", e => {
@@ -967,24 +978,16 @@ async function runOCR(src){
   SPLIT_MODE = "even"; WEIGHTS = {};
   $$(".seg button[data-mode]").forEach(x => x.classList.toggle("on", x.dataset.mode === "even"));
   $("#store-name").value = RCPT.store || "";
-  $("#store-mark").textContent = storeEmoji(RCPT.store);
+  $("#store-mark").innerHTML = STOREFRONT;
   if(!RCPT.store) toast("Couldn't read the store name — type it in");
   renderWeights(); renderLines();
 }
 $("#store-name").oninput = e => {
   RCPT.store = e.target.value;
-  $("#store-mark").textContent = storeEmoji(RCPT.store);
+  $("#store-mark").innerHTML = STOREFRONT;
 };
-function storeEmoji(name){
-  const n = (name||"").toLowerCase();
-  if(/pharm|cvs|walgreen|rite aid/.test(n)) return "💊";
-  if(/farm|market|grocer|produce|fresh/.test(n)) return "🥬";
-  if(/liquor|wine|beer|spirit/.test(n))         return "🍷";
-  if(/costco|sam.s|bj.s|wholesale/.test(n))     return "📦";
-  if(/target|walmart|kmart/.test(n))            return "🎯";
-  if(/bakery|bread/.test(n))                    return "🥖";
-  return "🏬";
-}
+const STOREFRONT = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h16v11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1zM3 9l1.6-5h14.8L21 9M9 21v-6h6v6"/></svg>';
+function storeEmoji(){ return STOREFRONT; }
 
 const SKIP = /(sub\s*total|subtotal|total|tax|change|cash|credit|debit|balance|visa|mastercard|tend|auth|acct|approv|thank|store|market|st\b.*\d{3}|^\W*$)/i;
 
@@ -1013,7 +1016,7 @@ function parseReceipt(text){
     const name  = m[1].replace(/[^A-Za-z0-9 %&'/.\-]/g," ").replace(/\s+/g," ").trim();
     const price = parseFloat(m[2].replace(",","."));
     if(!name || isNaN(price)) continue;
-    if(/^tax/i.test(name)) { RCPT.tax = price; continue; }
+    if(/^(sales\s*|state\s*|local\s*)?tax\b/i.test(name)) { RCPT.tax = Math.max(RCPT.tax, price); continue; }
     if(/total/i.test(name) && !/sub/i.test(name)) { RCPT.total = Math.max(RCPT.total, price); continue; }
     if(SKIP.test(name)) continue;
     if(name.replace(/[^A-Za-z]/g,"").length < 3) continue;
@@ -1034,13 +1037,15 @@ function renderLines(){
     <div>
       <div class="line ${l.split?'on':'off'}" data-id="${l.id}">
         <div class="chk" onclick="toggleLine('${l.id}')">${l.split?'✓':''}</div>
-        <div class="lname"><input value="${l.name.replace(/"/g,'&quot;')}" oninput="renameLine('${l.id}',this.value)" aria-label="item name"></div>
-        <div class="lprice">${money(l.price)}</div>
+        <div class="lname"><input value="${esc(l.name)}" oninput="renameLine('${l.id}',this.value)" aria-label="item name"></div>
+        <div class="lprice"><input inputmode="decimal" value="${money(l.price)}"
+             onchange="setPrice('${l.id}', this.value)" onfocus="this.select()" aria-label="price"
+             style="border:0;background:transparent;width:74px;text-align:right;font:inherit;letter-spacing:inherit;color:inherit"></div>
       </div>
       ${l.split ? `
         <button class="whosum" onclick="toggleExpand('${l.id}')">${whoLabel(l, mem)} <span style="opacity:.6">${EXPANDED.has(l.id)?'▲':'▾'}</span></button>
-        ${EXPANDED.has(l.id) ? `<div class="who">${mem.map(m=>`<button class="${l.who.includes(m.id)?'on':''}" onclick="toggleWho('${l.id}','${m.id}')">${m.name.split(" ")[0]}</button>`).join("")}</div>`:""}
-      ` : `<div class="whosum" style="color:var(--muted);cursor:default">not split — yours alone</div>`}
+        ${EXPANDED.has(l.id) ? `<div class="who">${mem.map(m=>`<button class="${l.who.includes(m.id)?'on':''}" onclick="toggleWho('${l.id}','${m.id}')">${esc(m.name.split(" ")[0])}</button>`).join("")}</div>`:""}
+      ` : `<div class="whosum" style="color:var(--label-2);cursor:default">not split — yours alone</div>`}
     </div>`).join("");
   const n = LINES.filter(l=>l.split).length;
   $("#split-count").textContent = `${n} of ${LINES.length} shared`;
@@ -1063,22 +1068,37 @@ function renderWeights(){
   const total = mem.reduce((a,m)=>a+(Number(WEIGHTS[m.id])||0), 0);
   box.innerHTML = mem.map(m=>`
     <div class="wrow">
-      <span class="nm">${m.name.split(" ")[0]}${m.id===me.id?' (you)':''}</span>
+      <span class="nm">${esc(m.name.split(" ")[0])}${m.id===me.id?' (you)':''}</span>
       <input type="range" min="0" max="100" step="1" value="${Number(WEIGHTS[m.id])||0}"
-             oninput="setWeight('${m.id}', this.value)" aria-label="${m.name} percentage">
-      <span class="wpct">${Number(WEIGHTS[m.id])||0}%</span>
+             oninput="setWeight('${m.id}', this.value, true)" onchange="setWeight('${m.id}', this.value)"
+             aria-label="${esc(m.name)} percentage">
+      <span class="wpct" data-pct="${m.id}">${Number(WEIGHTS[m.id])||0}%</span>
     </div>`).join("") +
-    `<div class="totrow" style="border-top:1px solid var(--line);margin-top:6px;padding-top:8px">
+    `<div class="totrow" style="border-top:1px solid var(--separator);margin-top:6px;padding-top:8px">
        <span class="sub">Total</span>
-       <b style="color:${total===100?'var(--accent)':'var(--warn)'}">${total}%${total===100?' ✓':''}</b></div>` +
+       <b style="color:${total===100?'var(--tint)':'var(--warning)'}">${total}%${total===100?' ✓':''}</b></div>` +
     (total !== 100
       ? `<p class="sub" style="font-size:11.5px;margin-top:4px">Doesn't need to hit 100 — we divide by the shares you've set. But it reads clearer when it does. <button class="btn ghost sm" style="margin-top:6px" onclick="balanceWeights()">Even it out</button></p>`
       : "");
 }
-function setWeight(uid, v){ WEIGHTS[uid] = Number(v); renderWeights(); renderSummary(); }
+/* live=true during a drag: update the label in place and recompute the totals,
+   but do NOT re-render the slider list — that destroys the element mid-drag. */
+function setWeight(uid, v, live){
+  WEIGHTS[uid] = Number(v);
+  const lbl = document.querySelector(`[data-pct="${uid}"]`);
+  if(lbl) lbl.textContent = WEIGHTS[uid] + "%";
+  if(!live) renderWeights();
+  renderSummary();
+}
 function balanceWeights(){ WEIGHTS = evenWeights(); renderWeights(); renderSummary(); }
 function toggleLine(id){ const l=LINES.find(x=>x.id===id); l.split=!l.split; if(l.split&&!l.who.length) l.who=H().members.map(m=>m.id); renderLines(); }
 function renameLine(id,v){ LINES.find(x=>x.id===id).name = v; renderSummary(); }
+function setPrice(id, v){
+  const l = LINES.find(x=>x.id===id); if(!l) return;
+  const n = parseFloat(String(v).replace(/[^0-9.\-]/g,""));
+  if(!isNaN(n)) l.price = n;
+  renderLines();
+}
 function toggleWho(id,uid){
   const l = LINES.find(x=>x.id===id);
   l.who = l.who.includes(uid) ? l.who.filter(w=>w!==uid) : [...l.who,uid];
@@ -1125,11 +1145,12 @@ function computeSplit(){
     if(l.split && l.who.length){
       sharedC += p;
       // weights restricted to this item's sharers; all-zero falls back to even
-      let who = l.who.slice();
-      let tot = who.reduce((a,u)=>a+(W[u]||0), 0);
-      if(tot <= 0){ who.forEach(u=>W[u]=1); tot = who.length; }
+      const who = l.who.slice();
+      // per-line copy: an all-zero fallback must not contaminate later lines
+      let w = W, tot = who.reduce((a,u)=>a+(W[u]||0), 0);
+      if(tot <= 0){ w = {}; who.forEach(u => w[u] = 1); tot = who.length; }
       // largest-remainder over the item, rotated so spare cents don't always land on one person
-      const parts = who.map(u => { const v = p*(W[u]||0)/tot; return {u, v, f:Math.floor(v)}; });
+      const parts = who.map(u => { const v = p*(w[u]||0)/tot; return {u, v, f:Math.floor(v)}; });
       let left = p - parts.reduce((a,x)=>a+x.f, 0);
       parts.sort((a,b) => (b.v-b.f) - (a.v-a.f));
       // even split: every remainder is identical, so rotate the spare cent by item
@@ -1164,14 +1185,21 @@ function renderSummary(){
   const s = computeSplit(), mem = H().members;
   $("#store-total").textContent = money(s.grand);
   $("#summary").innerHTML =
-    mem.map(m=>`<div class="totrow"><span>${m.name}${m.id===me.id?' (you)':''}</span><b>${money(s.owed[m.id])}</b></div>`).join("") +
-    (s.mine>0?`<div class="totrow" style="color:var(--muted)"><span>Not split — yours alone</span><span>${money(s.mine+s.taxMine)}</span></div>`:"") +
-    (s.tax>0?`<div class="totrow" style="color:var(--muted)"><span>Tax (allocated proportionally)</span><span>${money(s.tax)}</span></div>`:"") +
+    mem.map(m=>`<div class="totrow"><span>${esc(m.name)}${m.id===me.id?' (you)':''}</span><b>${money(s.owed[m.id])}</b></div>`).join("") +
+    (s.mine>0?`<div class="totrow" style="color:var(--label-2)"><span>Not split — yours alone</span><span>${money(s.mine+s.taxMine)}</span></div>`:"") +
+    (s.tax>0?`<div class="totrow" style="color:var(--label-2)"><span>Tax (allocated proportionally)</span><span>${money(s.tax)}</span></div>`:"") +
     `<div class="totrow big"><span>Receipt total</span><span>${money(s.grand)}</span></div>` +
     (RCPT.total && Math.abs(RCPT.total-s.grand)>0.02
-      ? `<p class="sub" style="margin-top:7px;color:var(--warn)">⚠ Receipt says ${money(RCPT.total)} — ${money(Math.abs(RCPT.total-s.grand))} off. Check for a missed line.</p>`
+      ? `<p class="sub" style="margin-top:7px;color:var(--warning)">⚠ Receipt says ${money(RCPT.total)} — ${money(Math.abs(RCPT.total-s.grand))} off. Check for a missed line.</p>`
       : `<p class="sub" style="margin-top:7px">✓ Matches the printed total.</p>`);
 }
+$("#btn-discard").onclick = () => {
+  if(LINES.length && !confirm("Throw away this receipt and start again?")) return;
+  LINES = []; RCPT = {tax:0, total:0, store:""}; EXPANDED.clear();
+  $("#receipt-edit").classList.add("hide"); $("#receipt-intro").classList.remove("hide");
+  $("#receipt-file").value = "";
+  toast("Discarded");
+};
 $("#btn-settle").onclick = () => {
   const s = computeSplit();
   H().trips.unshift({ id:crypto.randomUUID(), at:Date.now(), payer:me.id, payerName:me.name,
@@ -1184,9 +1212,12 @@ $("#btn-settle").onclick = () => {
 };
 
 /* ═══════════ 5. SETTLE — Venmo links ═══════════ */
-function venmoLink(handle, amount, note){
+/* txn=charge asks THEM for money; txn=pay sends money. Getting this backwards
+   moves cash the wrong way by twice the debt. */
+function venmoLink(handle, amount, note, kind){
   const h = (handle||"").replace(/^@/,"");
-  return `https://venmo.com/${encodeURIComponent(h)}?txn=charge&amount=${amount.toFixed(2)}&note=${encodeURIComponent(note)}`;
+  const txn = kind === "pay" ? "pay" : "charge";
+  return `https://venmo.com/${encodeURIComponent(h)}?txn=${txn}&amount=${amount.toFixed(2)}&note=${encodeURIComponent(note)}`;
 }
 /* Running balance, Splitwise-style: every trip and every payment accrues into
    one number per housemate. Nothing needs settling receipt-by-receipt. */
@@ -1211,7 +1242,7 @@ function renderSettle(){
 
   $("#bal-head").innerHTML =
     Math.abs(overall) < 0.005 ? "You're all square."
-    : overall > 0 ? `You're up <span style="color:var(--accent)">${money(overall)}</span> with the house.`
+    : overall > 0 ? `You're up <span style="color:var(--tint)">${money(overall)}</span> with the house.`
                   : `You're down ${money(-overall)} with the house.`;
 
   const scale = Math.max(1, ...rows.map(([,v])=>Math.abs(v)));
@@ -1219,20 +1250,20 @@ function renderSettle(){
     const m = mem.find(x=>x.id===uid) || {name:"Housemate", venmo:""};
     const up = v > 0, pct = Math.min(50, Math.abs(v)/scale*50);
     return `<div class="see">
-      <div class="avatar">${m.pic?`<img src="${m.pic}">`:initials(m.name)}</div>
-      <div style="flex:0 0 auto;width:74px;font-size:13.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.name.split(" ")[0]}</div>
+      <div class="avatar">${m.pic?`<img src="${esc(m.pic)}">`:initials(m.name)}</div>
+      <div style="flex:0 0 auto;width:74px;font-size:13.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.name.split(" ")[0])}</div>
       <div class="seetrack">
-        <i style="${up ? `left:50%;width:${pct}%;background:var(--accent)`
-                       : `right:50%;width:${pct}%;background:var(--muted);opacity:.45`}"></i>
+        <i style="${up ? `left:50%;width:${pct}%;background:var(--tint)`
+                       : `right:50%;width:${pct}%;background:var(--label-2);opacity:.45`}"></i>
       </div>
       <div class="seeamt">${money(Math.abs(v))}<small>${up?'owed':'owes'}</small></div>
     </div>`;
-  }).join("") : `<div class="empty"><span class="big">🤝</span>Perfectly balanced. Nobody owes anybody a cent — go split a pizza and ruin it.</div>`;
+  }).join("") : `<div class="empty"><b>Perfectly balanced</b>Nobody owes anybody a cent. Go split a pizza and ruin it.</div>`;
 
   $("#venmo-nudge").classList.toggle("hide", !!mine.venmo);
   $("#btn-squareup").classList.toggle("hide", rows.length === 0);
   $("#venmo-in").value = mine.venmo || "";
-  $("#house-venmo").innerHTML = mem.map(m=>`<div class="totrow"><span>${m.name}${m.id===me.id?' <span class="sub">(you)</span>':''}</span><span class="sub">${m.venmo?'@'+m.venmo.replace(/^@/,''):'— not linked'}</span></div>`).join("");
+  $("#house-venmo").innerHTML = mem.map(m=>`<div class="totrow"><span>${esc(m.name)}${m.id===me.id?' <span class="sub">(you)</span>':''}</span><span class="sub">${m.venmo?'@'+m.venmo.replace(/^@/,''):'— not linked'}</span></div>`).join("");
 }
 
 /* Square up: Venmo link per person, and recording a payment adjusts the running
@@ -1248,9 +1279,9 @@ $("#btn-squareup").onclick = () => {
       const note = them ? `HouseCart: ${H().name} groceries` : `HouseCart: paying you back`;
       return `<div class="itemrow">
         <div class="avatar" style="width:40px;height:40px;font-size:14px">${initials(m.name)}</div>
-        <div style="flex:1;min-width:0"><div class="iname">${m.name}</div>
-          <div class="imeta">${them?`owes you <b>${money(amt)}</b>`:`you owe <b>${money(amt)}</b>`}${m.venmo?` · @${m.venmo.replace(/^@/,'')}`:' · no Venmo linked'}</div></div>
-        ${m.venmo ? `<a class="btn venmo sm" href="${venmoLink(m.venmo, amt, note)}" target="_blank" rel="noopener" data-ref="venmo-btn">${them?'Request':'Pay'}</a>`
+        <div style="flex:1;min-width:0"><div class="iname">${esc(m.name)}</div>
+          <div class="imeta">${them?`owes you <b>${money(amt)}</b>`:`you owe <b>${money(amt)}</b>`}${m.venmo?` · @${esc(m.venmo.replace(/^@/,''))}`:' · no Venmo linked'}</div></div>
+        ${m.venmo ? `<a class="btn venmo sm" href="${venmoLink(m.venmo, amt, note, them ? "charge" : "pay")}" target="_blank" rel="noopener" data-ref="venmo-btn">${them?'Request':'Pay'}</a>`
                   : `<span class="tag grey">no venmo</span>`}
         <button class="btn ghost sm" onclick="recordPayment('${uid}',${amt},${them})">Mark paid</button>
       </div>`;
@@ -1274,22 +1305,22 @@ $("#me-av").onclick = () => accountSheet(false);
 function accountSheet(focusVenmo){
   const mine = H().members.find(m=>m.id===me.id) || me;
   sheet(`<h2>Your account</h2>
-    <div class="itemrow" style="border-bottom:1px solid var(--line)">
-      <div class="avatar" style="width:44px;height:44px;font-size:15px">${me.pic?`<img src="${me.pic}">`:initials(me.name)}</div>
-      <div style="flex:1;min-width:0"><div class="iname">${me.name}</div><div class="imeta">${me.email||""}</div></div>
+    <div class="itemrow" style="border-bottom:1px solid var(--separator)">
+      <div class="avatar" style="width:44px;height:44px;font-size:15px">${me.pic?`<img src="${esc(me.pic)}">`:initials(me.name)}</div>
+      <div style="flex:1;min-width:0"><div class="iname">${esc(me.name)}</div><div class="imeta">${esc(me.email||"")}</div></div>
     </div>
     <h2 style="font-size:14px;margin-top:14px">Venmo handle</h2>
     <p class="sub" style="margin-bottom:2px">${mine.venmo
       ? "Housemates can pay you back in one tap."
       : "Add it so getting paid back doesn't require a conversation."}</p>
     <div class="row"><input class="field" id="acct-venmo" data-ref="account-venmo-input"
-      placeholder="@your-venmo" value="${(mine.venmo||"").replace(/"/g,'&quot;')}" style="margin:6px 0">
+      placeholder="@your-venmo" value="${esc(mine.venmo||'')}" style="margin:6px 0">
       <button class="btn sm" id="acct-save">Save</button></div>
     <p class="sub" style="font-size:11.5px">Just the handle — <b>@kaylee-r</b> or <b>kaylee-r</b>. We only ever build a payment link with it.</p>
-    <div class="row" style="margin-top:16px;border-top:1px solid var(--line);padding-top:12px">
+    <div class="row" style="margin-top:16px;border-top:1px solid var(--separator);padding-top:12px">
       <button class="btn ghost sm" onclick="closeSheet()">Close</button>
       <div style="flex:1"></div>
-      <button class="btn ghost sm" onclick="signOut()" style="color:var(--warn)">Sign out</button>
+      <button class="btn ghost sm" onclick="confirmSignOut()" style="color:var(--negative)">Sign out</button>
     </div>`);
   const save1 = () => {
     const v = $("#acct-venmo").value.trim();
@@ -1330,12 +1361,12 @@ function renderSpend(){
       ${keys.map(k=>`<div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:5px">
         <span class="sub" style="font-size:10.5px;font-variant-numeric:tabular-nums">${compact(months[k].house)}</span>
         <div style="width:100%;background:#efece4;border-radius:6px 6px 0 0;height:${Math.max(4,months[k].house/mmax*62)}px;position:relative;overflow:hidden">
-          <div style="position:absolute;bottom:0;left:0;right:0;background:var(--accent);height:${months[k].house?months[k].mine/months[k].house*100:0}%"></div>
+          <div style="position:absolute;bottom:0;left:0;right:0;background:var(--tint);height:${months[k].house?months[k].mine/months[k].house*100:0}%"></div>
         </div>
         <span class="sub" style="font-size:11px">${months[k].label}</span></div>`).join("")}
     </div>
-    <p class="sub" style="margin-top:8px;font-size:11.5px"><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:var(--accent);vertical-align:-1px"></span> your share · <span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#efece4;vertical-align:-1px"></span> the rest of the house</p>`
-    : `<div class="empty" style="padding:16px"><span class="big">📈</span>Log a trip and your monthly spend shows up here.</div>`;
+    <p class="sub" style="margin-top:8px;font-size:11.5px"><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:var(--tint);vertical-align:-1px"></span> your share · <span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#efece4;vertical-align:-1px"></span> the rest of the house</p>`
+    : `<div class="empty" style="padding:20px 8px">Log a trip and your monthly spend shows up here.</div>`;
 
   const paid = {}, share = {};
   mem.forEach(m=>{paid[m.id]=0; share[m.id]=0});
@@ -1343,33 +1374,35 @@ function renderSpend(){
   const max = Math.max(1, ...Object.values(paid), ...Object.values(share));
   $("#spend-people").innerHTML = mem.map(m=>`
     <div style="margin-bottom:13px">
-      <div style="font-size:13.5px;font-weight:600">${m.name}${m.id===me.id?' <span class="sub" style="font-weight:500">(you)</span>':''}</div>
-      <div class="sub" style="font-size:11.5px;margin:1px 0 2px">fronted <b style="color:var(--ink)">${money(paid[m.id]||0)}</b> · consumed <b style="color:var(--ink)">${money(share[m.id]||0)}</b></div>
+      <div style="font-size:13.5px;font-weight:600">${esc(m.name)}${m.id===me.id?' <span class="sub" style="font-weight:500">(you)</span>':''}</div>
+      <div class="sub" style="font-size:11.5px;margin:1px 0 2px">fronted <b style="color:var(--label)">${money(paid[m.id]||0)}</b> · consumed <b style="color:var(--label)">${money(share[m.id]||0)}</b></div>
       <div class="bar"><i style="width:${(paid[m.id]||0)/max*100}%"></i></div>
-      <div class="bar" style="margin-top:3px;height:5px"><i style="width:${(share[m.id]||0)/max*100}%;background:var(--muted);opacity:.45"></i></div>
+      <div class="bar" style="margin-top:3px;height:5px"><i style="width:${(share[m.id]||0)/max*100}%;background:var(--label-2);opacity:.45"></i></div>
     </div>`).join("") +
     `<p class="sub" style="font-size:11.5px">Top bar is what they paid at the register, bottom is what they actually used. Someone whose top bar keeps running short is quietly being carried.</p>`;
 
   $("#history").innerHTML = trips.length ? [...trips].sort((a,b)=>b.at-a.at).map(t=>`
     <div class="itemrow" style="cursor:pointer" onclick="tripDetail('${t.id}')">
-      <div class="thumb">${storeEmoji(t.store)}</div>
+      <div class="thumb">${STOREFRONT}</div>
       <div style="flex:1;min-width:0">
-        <div class="iname">${t.store || "Somewhere with receipts"}</div>
-        <div class="imeta">${new Date(t.at).toLocaleDateString(undefined,{month:"short",day:"numeric"})} · ${t.items.length} item${t.items.length===1?'':'s'} · ${t.payerName.split(" ")[0]} paid</div></div>
+        <div class="iname">${esc(t.store || "Somewhere with receipts")}</div>
+        <div class="imeta">${new Date(t.at).toLocaleDateString(undefined,{month:"short",day:"numeric"})} · ${t.items.length} item${t.items.length===1?'':'s'} · ${esc(t.payerName.split(" ")[0])} paid</div></div>
       <div style="text-align:right;flex:0 0 auto"><div class="lprice">${money(t.total)}</div></div>
-    </div>`).join("") : `<div class="empty"><span class="big">🧾</span>No trips logged. Next grocery run, photograph the receipt before it dissolves in someone's pocket.</div>`;
+    </div>`).join("") : `<div class="empty"><b>No trips yet</b>Next grocery run, photograph the receipt before it dissolves in someone's pocket.</div>`;
 }
 function tripDetail(id){
   const t = H().trips.find(x=>x.id===id), mem=H().members;
-  sheet(`<h2>${t.store || "Somewhere with receipts"}</h2>
-    <p class="sub" style="margin-bottom:10px">${new Date(t.at).toLocaleString(undefined,{dateStyle:"medium"})} · ${t.payerName} paid ${money(t.total)}${t.splitMode==="custom"?" · split by percentage":""}</p>
-    ${t.items.map(i=>`<div class="totrow"><span>${i.split?'':'<span class="sub">(not split) </span>'}${i.name}</span><span>${money(i.price)}</span></div>`).join("")}
-    <div style="border-top:1px solid var(--line);margin:10px 0;padding-top:10px">
+  sheet(`<h2>${esc(t.store || "Somewhere with receipts")}</h2>
+    <p class="sub" style="margin-bottom:10px">${new Date(t.at).toLocaleString(undefined,{dateStyle:"medium"})} · ${esc(t.payerName)} paid ${money(t.total)}${t.splitMode==="custom"?" · split by percentage":""}</p>
+    ${t.items.map(i=>`<div class="totrow"><span>${i.split?'':'<span class="sub">(not split) </span>'}${esc(i.name)}</span><span>${money(i.price)}</span></div>`).join("")}
+    <div style="border-top:1px solid var(--separator);margin:10px 0;padding-top:10px">
     ${Object.entries(t.owed).map(([u,v])=>`<div class="totrow"><span>${(mem.find(m=>m.id===u)||{name:"?"}).name}</span><b>${money(v)}</b></div>`).join("")}</div>`);
 }
 
 /* ═══════════ ROUTING / RENDER ═══════════ */
+const TITLES = { pantry:"Pantry", receipt:"Receipt", settle:"Settle", spend:"Spending" };
 function go(tab){
+  $("#screen-title").textContent = TITLES[tab] || "";
   $$(".tabbar button").forEach(b=>b.classList.toggle("on", b.dataset.tab===tab));
   ["pantry","receipt","settle","spend"].forEach(t=>$("#tab-"+t).classList.toggle("hide", t!==tab));
   render();
@@ -1388,6 +1421,8 @@ function render(){
   if(!me || !cur || !H()) return;
   $("#house-name").textContent = H().name;
   $("#house-code").textContent = H().code;
+  const n = H().members.length;
+  $("#screen-sub").textContent = `${n} housemate${n===1?"":"s"} · code ${H().code}`;
   $("#me-av").innerHTML = me.pic ? `<img src="${me.pic}">` : initials(me.name);
   /* ── pantry: Have (in the house) / Need (low or out) ── */
   const p = H().pantry;
@@ -1402,14 +1437,14 @@ function render(){
     need.forEach(i => { const k = i.cat || "other"; (byCat[k] = byCat[k] || []).push(i); });
     $("#pantry-list").innerHTML = need.length
       ? CAT_ORDER.filter(k=>byCat[k]).map(k =>
-          `<div class="cathead">${CATS[k].emoji} ${CATS[k].name}</div>` +
+          `<div class="cathead">${CATS[k].name}</div>` +
           byCat[k].map(i => itemRow(i, "need")).join("")).join("")
-      : `<div class="empty"><span class="big">✨</span>Nothing needed. Either the house is fully stocked, or nobody's opened the fridge and checked.<br>Tap a jar in the pantry when something runs low.</div>`;
+      : `<div class="empty"><b>Nothing needed</b>Either the house is fully stocked, or nobody has checked. Tap a jar in the pantry when something runs low.</div>`;
   } else {
     $("#pantry-hint").textContent = have.length ? "Tap a jar to mark something running low or out." : "";
     $("#pantry-list").innerHTML = have.length
       ? have.map(i => itemRow(i, "have")).join("")
-      : `<div class="empty"><span class="big">🫙</span>Nothing on the shelves yet.<br>Scan the first thing you find in the kitchen — we'll take it from there.</div>`;
+      : `<div class="empty"><b>Nothing on the shelves</b>Scan the first thing you find in the kitchen and we'll take it from there.</div>`;
   }
   renderApprovals(); renderSettle(); renderSpend();
 }
@@ -1428,29 +1463,33 @@ function route(){
     const nm = (pendingInfo && pendingInfo.name) || (h && h.name) || pendingCode;
     const ad = (pendingInfo && pendingInfo.adminName) || (h ? adminOf(h).name : "the house admin");
     $("#waiting-note").innerHTML =
-      `Your request to join <b>${nm}</b> (${pendingCode}) is sitting with <b>${ad}</b>, who set the house up.` +
+      `Your request to join <b>${esc(nm)}</b> (${pendingCode}) is sitting with <b>${esc(ad)}</b>, who set the house up.` +
       (CLOUD() ? " This screen updates by itself the moment they say yes." : " They'll see it next time they open HouseCart.");
     $("#btn-recheck").classList.toggle("hide", CLOUD());
   }
   if(signed && !housed && !waiting){
     const mine = Object.values(houses).filter(h=>h.members.some(m=>m.id===me.id));
-    $("#mine").innerHTML = mine.length ? "Your houses: " + mine.map(h=>`<a href="#" onclick="switchHouse('${h.code}');route();return false"><b>${h.name}</b> (${h.code})</a>`).join(", ") : "";
+    $("#mine").innerHTML = mine.length ? "Your houses: " + mine.map(h=>`<a href="#" onclick="switchHouse('${h.code}');route();return false"><b>${esc(h.name)}</b> (${h.code})</a>`).join(", ") : "";
   }
   if(housed) render();
 }
 function bootCloud(){
-  if(!CLOUD()) return;
+  if(!CLOUD() || cloudBooted) return;      // both the event and onload fire
+  cloudBooted = true;
   window.HC_SYNC.onUser(u => {
-    if(u && (!me || me.id !== u.id)) signIn({ ...u, venmo: (me && me.venmo) || "" });
-    else if(!u && me){ me = null; cur = null; houses = {}; save(); route(); }
+    // On reload the restored session has the SAME uid, so this must still
+    // (re)attach listeners — otherwise the app silently runs on stale cache.
+    if(u) signIn({ ...u, venmo: (me && me.venmo) || "" });
+    else if(me){ me = null; cur = null; houses = {}; save(); route(); }
   });
 }
+let cloudBooted = false;
 window.addEventListener("hc-sync-ready", bootCloud);
 window.onload = () => { initAuth(); bootCloud(); };
 route();
 
 /* expose for inline handlers */
-Object.assign(window,{signIn,closeSheet,approveJoin,denyJoin,cancelRequest,recheckRequest,isAdmin,addManual,delItem,toggleLine,toggleWho,renameLine,toggleExpand,signOut,switchHouse,leaveToGate,recordPayment,tripDetail,onBarcode,$,cycleStock,restock,itemSheet,setWeight,balanceWeights});
+Object.assign(window,{signIn,closeSheet,approveJoin,denyJoin,cancelRequest,recheckRequest,isAdmin,addManual,delItem,toggleLine,toggleWho,renameLine,toggleExpand,signOut,confirmSignOut,setPrice,switchHouse,leaveToGate,recordPayment,tripDetail,onBarcode,$,cycleStock,restock,itemSheet,setWeight,balanceWeights});
 </script>
 </body>
 </html>
