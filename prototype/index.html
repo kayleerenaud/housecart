@@ -11,6 +11,8 @@
 <meta name="apple-mobile-web-app-title" content="HouseCart">
 <meta property="og:title" content="HouseCart">
 <meta property="og:description" content="Split the groceries, not the friendship.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%23e6f2ea'/><path d='M22 40h56l-5 40a6 6 0 0 1-6 5H33a6 6 0 0 1-6-5z' fill='%23d9a86f'/><path d='M22 40h56l-1 9H23z' fill='%23c8945c'/><path d='M37 40c0-8 6-13 13-13s13 5 13 13' fill='none' stroke='%23c8945c' stroke-width='3.5' stroke-linecap='round'/><circle cx='41' cy='60' r='2.6' fill='%237a5327'/><circle cx='59' cy='60' r='2.6' fill='%237a5327'/><path d='M45 66q5 4 10 0' stroke='%237a5327' stroke-width='2.4' fill='none' stroke-linecap='round'/></svg>">
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
@@ -24,12 +26,22 @@
   --radius:14px; --shadow:0 1px 2px rgba(29,27,22,.05),0 8px 24px rgba(29,27,22,.06);
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;padding:0}
+/* App-shell layout: the page itself never scrolls. Header and tab bar are
+   pinned, and ONLY the content area scrolls — and only when its content
+   genuinely overflows. Installed to a home screen this behaves like an app,
+   with no rubber-banding and no drifting chrome. */
+html,body{margin:0;padding:0;height:100%;overflow:hidden;overscroll-behavior:none}
 body{
   background:var(--bg);color:var(--ink);
   font:15px/1.45 ui-sans-serif,-apple-system,"SF Pro Text","Segoe UI",Roboto,system-ui,sans-serif;
-  padding-bottom:78px;
 }
+#app{height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+#app>main{
+  flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;padding-bottom:14px;
+}
+/* full-screen gates scroll internally only if a small phone forces it */
+#signin,#housegate,#waiting{height:100dvh;overflow-y:auto;overscroll-behavior:contain}
 h1,h2,h3{margin:0;font-weight:640;letter-spacing:-.01em}
 button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
 input,select{font:inherit;color:inherit}
@@ -37,7 +49,7 @@ input,select{font:inherit;color:inherit}
 .hide{display:none!important}
 
 /* ---------- top bar ---------- */
-.topbar{position:sticky;top:0;z-index:40;background:rgba(246,244,239,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.topbar{flex:0 0 auto;position:relative;z-index:40;background:rgba(246,244,239,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
 .topbar .wrap{display:flex;align-items:center;gap:10px;height:56px}
 .logo{display:flex;align-items:center;gap:8px;font-weight:700;letter-spacing:-.02em;font-size:17px}
 .logo .dot{width:22px;height:22px;border-radius:7px;background:var(--accent);display:grid;place-items:center;color:#fff;font-size:12px}
@@ -139,14 +151,14 @@ input,select{font:inherit;color:inherit}
 .stat .l{font-size:11.5px;color:var(--muted);margin-top:1px}
 
 /* ---------- tabbar ---------- */
-.tabbar{position:fixed;bottom:0;left:0;right:0;background:rgba(255,253,249,.94);backdrop-filter:blur(12px);border-top:1px solid var(--line);z-index:50;padding-bottom:env(safe-area-inset-bottom)}
+.tabbar{flex:0 0 auto;position:relative;background:rgba(255,253,249,.94);backdrop-filter:blur(12px);border-top:1px solid var(--line);z-index:50;padding-bottom:env(safe-area-inset-bottom)}
 .tabbar .wrap{display:flex;height:62px}
 .tabbar button{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--muted);font-size:10.5px;font-weight:600}
 .tabbar button.on{color:var(--accent)}
 .tabbar svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 
 /* ---------- signin / modal ---------- */
-.center{min-height:100dvh;display:grid;place-items:center;padding:24px}
+.center{min-height:100%;display:grid;place-items:center;padding:24px}
 .hero{text-align:center;max-width:340px}
 .hero .mark{width:60px;height:60px;border-radius:18px;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:30px;margin:0 auto 16px}
 .cover{margin:0 auto 6px;line-height:0}
@@ -158,22 +170,19 @@ input,select{font:inherit;color:inherit}
 @media (prefers-reduced-motion:reduce){.cover .bob,.cover .fleck{animation:none}}
 .modal{position:fixed;inset:0;background:rgba(29,27,22,.42);z-index:100;display:grid;place-items:end center}
 .sheet{background:var(--card);width:100%;max-width:520px;border-radius:18px 18px 0 0;padding:18px 16px calc(22px + env(safe-area-inset-bottom));max-height:88dvh;overflow:auto}
-.toast{position:fixed;bottom:78px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:9px 15px;border-radius:99px;font-size:13px;z-index:200;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast{position:fixed;bottom:84px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:9px 15px;border-radius:99px;font-size:13px;z-index:200;opacity:0;transition:opacity .2s;pointer-events:none}
 .toast.on{opacity:1}
 
 /* ---------- desktop: sit the phone-width app in a proper frame ---------- */
 @media (min-width:900px){
-  body{ background:#ece8e0; padding-bottom:0; min-height:100dvh; }
+  body{ background:#ece8e0; }
   #app{
     max-width:520px;margin:26px auto;background:var(--bg);
     border:1px solid #dcd6ca;border-radius:26px;overflow:hidden;
     box-shadow:0 20px 60px rgba(29,27,22,.13);
-    height:min(880px, calc(100dvh - 52px));display:flex;flex-direction:column;
+    height:min(880px, calc(100dvh - 52px));
   }
-  #app>main{flex:1;overflow-y:auto;padding-bottom:16px}
-  .topbar{position:static;background:var(--card)}
-  .tabbar{position:static;max-width:none}
-  .tabbar,.topbar{border-radius:0}
+  .topbar{background:var(--card)}
   .toast{bottom:96px}
   .modal{place-items:center}
   .sheet{border-radius:18px;max-width:460px;max-height:76dvh}
