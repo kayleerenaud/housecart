@@ -114,6 +114,8 @@ input,select{font:inherit;color:inherit}
     <div class="mark">🧺</div>
     <h1 style="font-size:26px">HouseCart</h1>
     <p class="sub" style="margin:8px 0 22px">Scan the groceries. Snap the receipt. Split only what's shared. Get paid back on Venmo.</p>
+    <button class="btn" id="btn-proto" data-ref="prototype-signin">Enter the prototype →</button>
+    <p class="sub" style="margin:9px 0 16px;font-size:11.5px">Drops you into a demo house with two housemates.</p>
     <div id="gsi-real"></div>
     <button class="btn ghost" id="btn-google" data-ref="google-signin" style="justify-content:center">
       <svg width="17" height="17" viewBox="0 0 48 48"><path fill="#4285F4" d="M45 24c0-1.6-.1-2.7-.4-3.9H24v7.1h12c-.2 1.8-1.5 4.6-4.4 6.5l6.7 5.2C42.2 35.3 45 30.1 45 24z"/><path fill="#34A853" d="M24 46c5.9 0 10.8-1.9 14.4-5.3l-6.9-5.3c-1.8 1.3-4.3 2.2-7.5 2.2-5.7 0-10.6-3.8-12.3-9l-7.1 5.5C8.2 41.1 15.5 46 24 46z"/><path fill="#FBBC05" d="M11.7 28.6A13.5 13.5 0 0 1 11 24c0-1.6.3-3.2.7-4.6l-7.1-5.6A22 22 0 0 0 2 24c0 3.6.9 6.9 2.4 10.1l7.3-5.5z"/><path fill="#EA4335" d="M24 10.4c4 0 6.8 1.7 8.3 3.2l6.1-6C34.7 4.1 29.9 2 24 2 15.5 2 8.2 6.9 4.6 14l7.1 5.5c1.7-5.3 6.6-9.1 12.3-9.1z"/></svg>
@@ -129,7 +131,7 @@ input,select{font:inherit;color:inherit}
     <div class="mark">🏠</div>
     <h1 style="font-size:23px">Join a household</h1>
     <p class="sub" style="margin:8px 0 18px">Everyone in the house shares one code.</p>
-    <input class="field" id="join-code" data-ref="house-code-input" placeholder="Enter house code (e.g. MAPLE7)" style="text-align:center;text-transform:uppercase;letter-spacing:.14em;font-weight:700">
+    <input class="field" id="join-code" data-ref="house-code-input" placeholder="HOUSE CODE" maxlength="12" style="text-align:center;text-transform:uppercase;letter-spacing:.14em;font-weight:700">
     <button class="btn" id="btn-join" data-ref="join-house-btn">Join house</button>
     <div class="row" style="margin:16px 0 12px"><div style="flex:1;height:1px;background:var(--line)"></div><span class="sub">or</span><div style="flex:1;height:1px;background:var(--line)"></div></div>
     <input class="field" id="new-house" placeholder="New house name — “Maple St”">
@@ -251,10 +253,22 @@ input,select{font:inherit;color:inherit}
    ═══════════════════════════════════════════════════════════════ */
 const GOOGLE_CLIENT_ID = ""; // e.g. "1234-abc.apps.googleusercontent.com"
 
-/* ── tiny store ───────────────────────────────────────────────── */
+/* ── tiny store ───────────────────────────────────────────────────
+   localStorage throws a SecurityError inside a sandboxed iframe, so
+   everything falls back to memory rather than dying mid-write.      */
+const MEM = {};
+let PERSIST = true;
+try { localStorage.setItem("hc:probe","1"); localStorage.removeItem("hc:probe"); }
+catch(e){ PERSIST = false; }
 const DB = {
-  get(k, d){ try{ return JSON.parse(localStorage.getItem("hc:"+k)) ?? d }catch(e){ return d } },
-  set(k, v){ localStorage.setItem("hc:"+k, JSON.stringify(v)) }
+  get(k, d){
+    try{ const raw = PERSIST ? localStorage.getItem("hc:"+k) : MEM[k];
+         return raw==null ? d : JSON.parse(raw); }catch(e){ return d }
+  },
+  set(k, v){
+    const s = JSON.stringify(v); MEM[k] = s;
+    if(PERSIST){ try{ localStorage.setItem("hc:"+k, s) }catch(e){ PERSIST = false } }
+  }
 };
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -292,13 +306,33 @@ function initAuth(){
     $("#gsi-note").innerHTML = "Demo mode — real Google sign-in activates the moment a Cloud Console client ID is dropped into <code>GOOGLE_CLIENT_ID</code>.";
   }
 }
-$("#btn-google").onclick = () => sheet(
-  `<h2>Choose a demo account</h2><p class="sub" style="margin-bottom:10px">Stands in for the Google account chooser.</p>` +
-  DEMO_PEOPLE.map(p=>`<div class="itemrow" onclick='signIn(${JSON.stringify(p)});closeSheet()' style="cursor:pointer">
-     <div class="avatar" style="width:38px;height:38px;font-size:14px">${initials(p.name)}</div>
-     <div style="flex:1"><div class="iname">${p.name}</div><div class="imeta">${p.email}</div></div></div>`).join("")
-);
-function signIn(p){ me = p; save(); route(); }
+$("#btn-google").onclick = () => {
+  sheet(`<h2>Choose a demo account</h2><p class="sub" style="margin-bottom:10px">Stands in for the Google account chooser.</p>` +
+    DEMO_PEOPLE.map((p,i)=>`<div class="itemrow demo-pick" data-i="${i}" style="cursor:pointer">
+       <div class="avatar" style="width:38px;height:38px;font-size:14px">${initials(p.name)}</div>
+       <div style="flex:1"><div class="iname">${p.name}</div><div class="imeta">${p.email}</div></div></div>`).join(""));
+  $$("#sheet .demo-pick").forEach(el => el.onclick = () => { closeSheet(); signIn(DEMO_PEOPLE[+el.dataset.i]); });
+};
+
+/* one-tap prototype entry: sign in AND drop into a stocked house */
+$("#btn-proto").onclick = () => {
+  me = { ...DEMO_PEOPLE[0] };
+  const code = "MAPLE7";
+  if(!houses[code]){
+    houses[code] = { code, name:"Maple St", pantry:[], trips:[],
+      members:[ {...DEMO_PEOPLE[0]}, {...DEMO_PEOPLE[1]}, {...DEMO_PEOPLE[2]} ] };
+  }
+  cur = code; save(); route(); go("pantry");
+  toast("You're in — house code MAPLE7");
+};
+
+function signIn(p){
+  me = p; save();
+  // if they already belong to a house, walk straight back into it
+  const mine = Object.values(houses).find(h => h.members.some(m => m.id === p.id));
+  if(mine) cur = mine.code;
+  save(); route();
+}
 
 /* ═══════════ 2. HOUSEHOLD ═══════════ */
 const CODE_WORDS = ["MAPLE","CEDAR","ORCHID","HARBOR","WILLOW","JUNIPER"];
