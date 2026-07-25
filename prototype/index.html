@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-title" content="HouseCart">
 <meta property="og:title" content="HouseCart">
 <meta property="og:description" content="Split the groceries, not the friendship.">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%232f7d55'/><text y='.9em' x='50' text-anchor='middle' font-size='62'>%F0%9F%A7%BA</text></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%23e6f2ea'/><path d='M22 40h56l-5 40a6 6 0 0 1-6 5H33a6 6 0 0 1-6-5z' fill='%23d9a86f'/><path d='M22 40h56l-1 9H23z' fill='%23c8945c'/><path d='M37 40c0-8 6-13 13-13s13 5 13 13' fill='none' stroke='%23c8945c' stroke-width='3.5' stroke-linecap='round'/><circle cx='41' cy='60' r='2.6' fill='%237a5327'/><circle cx='59' cy='60' r='2.6' fill='%237a5327'/><path d='M45 66q5 4 10 0' stroke='%237a5327' stroke-width='2.4' fill='none' stroke-linecap='round'/></svg>">
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
@@ -149,6 +149,13 @@ input,select{font:inherit;color:inherit}
 .center{min-height:100dvh;display:grid;place-items:center;padding:24px}
 .hero{text-align:center;max-width:340px}
 .hero .mark{width:60px;height:60px;border-radius:18px;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:30px;margin:0 auto 16px}
+.cover{margin:0 auto 6px;line-height:0}
+.cover .bob{animation:bob 4.5s ease-in-out infinite;transform-origin:100px 110px}
+.cover .fleck{animation:drift 5.5s ease-in-out infinite}
+.cover .f2{animation-delay:-1.4s}.cover .f3{animation-delay:-2.6s}.cover .f4{animation-delay:-3.7s}
+@keyframes bob{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-5px) rotate(-1.1deg)}}
+@keyframes drift{0%,100%{transform:translateY(0);opacity:.75}50%{transform:translateY(-6px);opacity:1}}
+@media (prefers-reduced-motion:reduce){.cover .bob,.cover .fleck{animation:none}}
 .modal{position:fixed;inset:0;background:rgba(29,27,22,.42);z-index:100;display:grid;place-items:end center}
 .sheet{background:var(--card);width:100%;max-width:520px;border-radius:18px 18px 0 0;padding:18px 16px calc(22px + env(safe-area-inset-bottom));max-height:88dvh;overflow:auto}
 .toast{position:fixed;bottom:78px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:9px 15px;border-radius:99px;font-size:13px;z-index:200;opacity:0;transition:opacity .2s;pointer-events:none}
@@ -181,8 +188,48 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
 <!-- ══════════════ SIGN IN ══════════════ -->
 <section id="signin" class="center" data-ref="signin-screen">
   <div class="hero">
-    <div class="mark">🧺</div>
-    <h1 style="font-size:26px">HouseCart</h1>
+    <div class="cover" data-ref="app-cover">
+      <svg viewBox="0 0 200 170" width="184" height="156" role="img" aria-label="A grocery bag full of shopping">
+        <!-- soft backdrop -->
+        <circle cx="100" cy="86" r="66" fill="var(--accent-soft)"/>
+        <circle class="fleck f1" cx="38"  cy="42"  r="3.4" fill="#d8c9a8"/>
+        <circle class="fleck f2" cx="166" cy="52"  r="2.6" fill="#e3b7a0"/>
+        <circle class="fleck f3" cx="158" cy="122" r="3"   fill="#cfd9cf"/>
+        <circle class="fleck f4" cx="44"  cy="120" r="2.2" fill="#dcc9b4"/>
+
+        <g class="bob">
+          <!-- greens -->
+          <g transform="translate(50 32) scale(1.15)">
+            <path d="M12 30C2 26 0 14 6 6c5-7 15-6 19 1 3-6 13-8 18-2 6 7 4 19-6 24z" fill="#3f9468"/>
+            <path d="M14 30c-3-9-2-17 3-24" stroke="#2f7d55" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+          </g>
+          <!-- baguette -->
+          <g transform="rotate(-14 132 44)">
+            <rect x="120" y="22" width="17" height="48" rx="8.5" fill="#dfae70"/>
+            <path d="M126 32l6 5M126 42l6 5M126 52l6 5" stroke="#c1904f" stroke-width="2" stroke-linecap="round"/>
+          </g>
+          <!-- milk carton -->
+          <g transform="translate(96 30)">
+            <path d="M0 16h26v40a4 4 0 0 1-4 4H4a4 4 0 0 1-4-4z" fill="#fffdf9" stroke="#e0dacd" stroke-width="1.6"/>
+            <path d="M0 16 13 4l13 12z" fill="#f2efe6" stroke="#e0dacd" stroke-width="1.6" stroke-linejoin="round"/>
+            <rect x="6" y="30" width="14" height="4" rx="2" fill="#cfe0d5"/>
+          </g>
+          <!-- the bag -->
+          <path d="M46 74h108l-8 66a10 10 0 0 1-10 9H64a10 10 0 0 1-10-9z" fill="#d9a86f"/>
+          <path d="M46 74h108l-2 15H48z" fill="#c8945c"/>
+          <path d="M74 74c0-12 10-21 26-21s26 9 26 21" fill="none" stroke="#c8945c" stroke-width="4" stroke-linecap="round"/>
+          <!-- a small face, because she asked for cute -->
+          <g class="face">
+            <circle cx="84"  cy="112" r="3.1" fill="#7a5327"/>
+            <circle cx="116" cy="112" r="3.1" fill="#7a5327"/>
+            <path d="M92 121q8 7 16 0" stroke="#7a5327" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+            <circle cx="74"  cy="120" r="4.6" fill="#e8a08a" opacity=".55"/>
+            <circle cx="126" cy="120" r="4.6" fill="#e8a08a" opacity=".55"/>
+          </g>
+        </g>
+      </svg>
+    </div>
+    <h1 style="font-size:27px;letter-spacing:-.025em">HouseCart</h1>
     <p class="sub" style="margin:8px 0 22px">Scan the groceries. Snap the receipt. Split only what's shared. Get paid back on Venmo.</p>
     <div id="gsi-btn" data-ref="google-signin" style="display:flex;justify-content:center;min-height:44px"></div>
     <p class="sub" id="gsi-note" style="margin-top:14px;font-size:11.5px"></p>
