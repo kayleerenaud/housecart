@@ -51,7 +51,7 @@ input,select{font:inherit;color:inherit}
 /* ---------- top bar ---------- */
 .topbar{flex:0 0 auto;position:relative;z-index:40;background:rgba(246,244,239,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
 .topbar .wrap{display:flex;align-items:center;gap:10px;height:56px}
-.logo{display:flex;align-items:center;gap:8px;font-weight:700;letter-spacing:-.02em;font-size:17px}
+.logo{display:flex;align-items:center;gap:8px;padding:4px 2px;margin-left:-2px;border-radius:9px;font-weight:700;letter-spacing:-.02em;font-size:17px}
 .logo .dot{width:22px;height:22px;border-radius:7px;background:var(--accent);display:grid;place-items:center;color:#fff;font-size:12px}
 .spacer{flex:1}
 .housepill{display:flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:5px 10px;font-size:12.5px;font-weight:600}
@@ -288,7 +288,7 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
 <div id="app" class="hide">
   <header class="topbar">
     <div class="wrap">
-      <div class="logo"><span class="dot">🧺</span> HouseCart</div>
+      <button class="logo" id="btn-home" data-ref="logo-home" aria-label="Back to pantry"><span class="dot">🧺</span> HouseCart</button>
       <div class="spacer"></div>
       <button class="housepill" id="house-switch" data-ref="house-switcher"><span id="house-name">—</span><span class="code" id="house-code">—</span> ▾</button>
       <button class="avatar" id="me-av" data-ref="me-avatar" aria-label="Your account"></button>
@@ -1280,6 +1280,14 @@ function go(tab){
   render();
 }
 $$(".tabbar button").forEach(b=>b.onclick=()=>go(b.dataset.tab));
+
+/* tapping the wordmark goes home — and if you're already home, jumps to the top */
+$("#btn-home").onclick = () => {
+  const main = $("#app>main"), atHome = !$("#tab-pantry").classList.contains("hide");
+  if(atHome && main && main.scrollTop > 0){ main.scrollTo({top:0, behavior:"smooth"}); return; }
+  go("pantry");
+  if(main) main.scrollTop = 0;
+};
 
 function render(){
   if(!me || !cur || !H()) return;
