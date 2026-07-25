@@ -14,7 +14,7 @@
 
 window.HOUSECART_CONFIG = {
 
-  GOOGLE_CLIENT_ID: "",
+  GOOGLE_CLIENT_ID: "31443710417-7hp07hfdg0977mvrfgi2r0cvbrt4estp.apps.googleusercontent.com",
 
   /* Left empty for now. Fill this in and households start syncing
      between phones instead of living in one browser. Also not secret. */
