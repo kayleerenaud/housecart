@@ -466,6 +466,12 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
   </div>
 </section>
 
+<div id="rules-warn" class="hide" style="position:fixed;left:0;right:0;bottom:0;z-index:300;background:var(--negative);color:#fff;padding:var(--s-2);font-size:13px;line-height:18px">
+  <b>Firestore isn't accepting writes.</b> The security rules haven't been published yet, so nothing can save.
+  Firebase console → Firestore → Rules → paste <code style="color:#fff">firestore.rules</code> → Publish.
+  <button onclick="this.parentNode.classList.add('hide')" style="color:#fff;text-decoration:underline;margin-left:var(--s-base)">dismiss</button>
+</div>
+
 <!-- ══════════════ WAITING FOR APPROVAL ══════════════ -->
 <section id="waiting" class="center hide" data-ref="waiting-screen">
   <div class="hero" style="max-width:340px">
@@ -715,7 +721,17 @@ function fbErr(e){
 async function cloud(fn, ...args){
   if(!CLOUD()) return;
   try { return await window.HC_SYNC[fn](...args); }
-  catch(e){ console.warn("sync." + fn, e); toast(fbErr(e)); }
+  catch(e){
+    console.warn("sync." + fn, e);
+    // Creating a house is the first write anyone makes. If THAT is refused,
+    // it's almost never membership — it's that firestore.rules was never
+    // published, so the database is still refusing everything.
+    if(fn === "createHouse" && String(e && e.code).includes("permission-denied")){
+      $("#rules-warn")?.classList.remove("hide");
+      return toast("Database is refusing writes — rules not published yet");
+    }
+    toast(fbErr(e));
+  }
 }
 
 let me = DB.get("me", null);
