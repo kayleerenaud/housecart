@@ -824,6 +824,18 @@ function showSetupHelp(){
   };
 }
 
+let gsiReady = false, oneTapShown = false;
+/* Only ever offered to someone who is genuinely signed out. */
+function oneTap(){
+  if(!gsiReady || oneTapShown || me) return;
+  oneTapShown = true;
+  try { google.accounts.id.prompt(); } catch(e){}
+}
+function dismissOneTap(){
+  try { google.accounts.id.cancel(); } catch(e){}
+  oneTapShown = true;        // don't re-offer this session
+}
+
 let gsiTries = 0;
 function initAuth(){
   if(!GOOGLE_CLIENT_ID){ showSetupHelp(); return; }
@@ -847,7 +859,11 @@ function initAuth(){
     });
     google.accounts.id.renderButton($("#gsi-btn"),
       { theme:"outline", size:"large", shape:"pill", text:"continue_with", width:300 });
-    google.accounts.id.prompt();                          // One Tap, if they're already signed in
+    gsiReady = true;
+    // Do NOT prompt yet. In cloud mode the stored Firebase session may already
+    // be signing this person in, and One Tap would then float over an app they
+    // are demonstrably already inside. offerOneTap() is called once we know.
+    if(!CLOUD() && !me) oneTap();
     $("#gsi-note").innerHTML = "We only ever see your name, email and profile photo.";
   }catch(e){
     $("#gsi-note").innerHTML = `Google sign-in failed to start: ${e.message}`;
@@ -855,6 +871,7 @@ function initAuth(){
 }
 function signIn(p){
   me = p; save(); applyVibe(currentVibe(), currentVariant());
+  dismissOneTap();
   if(CLOUD()){
     houses = {};
     let landed = false;
@@ -2165,6 +2182,8 @@ function bootCloud(){
   cloudBooted = true;
   window.HC_SYNC.onUser(u => {
     authResolved = true;
+    if(!u) setTimeout(oneTap, 250);      // genuinely signed out: now it's useful
+    else dismissOneTap();
     // On reload the restored session has the SAME uid, so this must still
     // (re)attach listeners — otherwise the app silently runs on stale cache.
     if(u) signIn({ ...u, googlePic: u.pic || (me && me.googlePic) || "",
@@ -2176,7 +2195,7 @@ let cloudBooted = false;
 window.addEventListener("hc-sync-ready", bootCloud);
 window.onload = () => {
   initAuth(); bootCloud();
-  setTimeout(()=>{ if(!authResolved){ authResolved = true; route(); } }, 4000);
+  setTimeout(()=>{ if(!authResolved){ authResolved = true; route(); if(!me) oneTap(); } }, 4000);
 };
 applyVibe(currentVibe(), currentVariant());
 route();
