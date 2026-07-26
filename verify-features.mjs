@@ -75,8 +75,8 @@ await p.click('[data-ref="tab-settle-btn"]'); await p.waitForTimeout(300);
 ok(await p.isVisible('[data-ref="venmo-nudge-btn"]'),'unlinked Venmo shows a nudge on the balance card');
 await p.click('[data-ref="me-avatar"]'); await p.waitForTimeout(300);
 ok(await p.isVisible('[data-ref="account-venmo-input"]'),'avatar opens an account sheet with the Venmo field');
-await p.fill('[data-ref="account-venmo-input"]','@kaylee-r'); await p.click('#acct-save'); await p.waitForTimeout(300);
-ok(await p.evaluate(()=>H().members.find(m=>m.id===me.id).venmo==='@kaylee-r'),'saving from the account sheet persists it');
+await p.fill('[data-ref="account-venmo-input"]','@kaylee-r'); await p.click('[data-ref="venmo-save"]'); await p.waitForTimeout(400);
+ok(await p.evaluate(()=>H().members.find(m=>m.id===me.id).venmo==='kaylee-r'),'saving from the account screen persists it (@ stripped)');
 ok(!(await p.isVisible('[data-ref="venmo-nudge-btn"]')),'nudge disappears once linked');
 await p.screenshot({path:'/tmp/f-settle.png',fullPage:true});
 

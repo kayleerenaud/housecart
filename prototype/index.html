@@ -13,7 +13,7 @@
 <meta property="og:description" content="Split the groceries, not the friendship.">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%23e6f2ea'/><path d='M22 40h56l-5 40a6 6 0 0 1-6 5H33a6 6 0 0 1-6-5z' fill='%23d9a86f'/><path d='M22 40h56l-1 9H23z' fill='%23c8945c'/><path d='M37 40c0-8 6-13 13-13s13 5 13 13' fill='none' stroke='%23c8945c' stroke-width='3.5' stroke-linecap='round'/><circle cx='41' cy='60' r='2.6' fill='%237a5327'/><circle cx='59' cy='60' r='2.6' fill='%237a5327'/><path d='M45 66q5 4 10 0' stroke='%237a5327' stroke-width='2.4' fill='none' stroke-linecap='round'/></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='114' fill='%230F7B41'/><g fill='none' stroke='%23fff' stroke-width='26' stroke-linecap='round' stroke-linejoin='round'><path d='M126 178h260l-23 208a26 26 0 0 1-26 23H175a26 26 0 0 1-26-23z'/><path d='M196 178v-26a60 60 0 0 1 120 0v26'/><path d='M126 254h260'/></g></svg>">
 <script src="config.js"></script>
 <script type="module">
   // only pull in the Firebase SDK when cloud sync is actually on
@@ -462,6 +462,17 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
     <div id="gsi-btn" data-ref="google-signin" style="display:flex;justify-content:center;min-height:44px"></div>
     <p class="sub" id="gsi-note" style="margin-top:14px;font-size:11.5px"></p>
 
+    <!-- Google refuses OAuth inside an app's built-in browser, so the button
+         never appears. Tell them plainly instead of showing nothing. -->
+    <div id="webview-warn" class="hide" style="text-align:left">
+      <div class="card pad">
+        <h2 style="font-size:17px">Open this in your browser</h2>
+        <p class="sub" style="margin:var(--s-base) 0 var(--s-2)">Google won't allow sign-in inside another app's built-in browser<span id="wv-app"></span>. Open HouseCart in Safari or Chrome and it'll work.</p>
+        <button class="btn" id="wv-copy" data-ref="webview-copy">Copy the link</button>
+        <p class="sub" style="margin-top:var(--s-2)">Then: tap <b>⋯</b> or the <b>share icon</b> at the edge of this window → <b>Open in Safari</b> (or Chrome), and paste the link if it doesn't carry over.</p>
+      </div>
+    </div>
+
     <!-- shown only until a client ID exists in config.js -->
     <div id="gsi-setup" class="hide" style="text-align:left;margin-top:4px">
       <div class="card" style="margin:0">
@@ -646,11 +657,8 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
       </div>
 
       <div class="sechead">Venmo</div>
-      <div class="card pad">
-        <div class="row"><input class="field" id="acct-venmo" data-ref="account-venmo-input" placeholder="@your-venmo" style="margin:0">
-          <button class="btn sm" id="acct-save">Save</button></div>
-      </div>
-      <div class="secfoot">Just the handle. We only ever use it to build a payment link.</div>
+      <div class="card" id="venmo-card"></div>
+      <div class="secfoot" id="venmo-foot">Just the handle. We only ever use it to build a payment link.</div>
 
       <div class="sechead">Vibe</div>
       <div class="card pad">
@@ -685,7 +693,7 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
     <!-- ── SPENDING ── -->
     <section id="tab-spend" class="hide" data-ref="spending-tab">
       <div class="stat" style="margin:var(--s-2) 0">
-        <div role="button" tabindex="0" style="cursor:pointer" onclick="scrollToHistory()" aria-label="House total — see trip history">
+        <div role="button" tabindex="0" style="cursor:pointer" onclick="scrollToHistory,renderVenmoCard,saveVenmo()" aria-label="House total — see trip history">
           <div class="l">House total</div><div class="n" id="s-house">$0</div></div>
         <div role="button" tabindex="0" style="cursor:pointer" onclick="go('settle')" aria-label="Your share — go to Settle">
           <div class="l">Your share</div><div class="n" id="s-me">$0</div></div>
@@ -840,6 +848,32 @@ function showSetupHelp(){
   };
 }
 
+/* Facebook, Instagram, Messenger, WhatsApp, TikTok and friends open links in an
+   embedded webview. Google deliberately blocks OAuth there, so the sign-in
+   button either never renders or fails on tap. Detect it and offer a way out. */
+const UA = navigator.userAgent || "";
+function inAppBrowser(){
+  return /FBAN|FBAV|FB_IAB|FBIOS|Instagram|Messenger|WhatsApp|Line\/|MicroMessenger|Snapchat|Pinterest|TikTok|LinkedInApp|Twitter|GSA\//i.test(UA)
+      || (/\bwv\b/.test(UA) && /Android/i.test(UA));
+}
+function whichApp(){
+  const m = [["FBAN|FBAV|FB_IAB|FBIOS","Facebook"],["Messenger","Messenger"],["Instagram","Instagram"],
+             ["WhatsApp","WhatsApp"],["Snapchat","Snapchat"],["TikTok","TikTok"],["LinkedInApp","LinkedIn"],
+             ["Twitter","X"],["MicroMessenger","WeChat"],["Pinterest","Pinterest"]]
+    .find(([re]) => new RegExp(re,"i").test(UA));
+  return m ? " (" + m[1] + ")" : "";
+}
+function showWebviewHelp(){
+  $("#webview-warn").classList.remove("hide");
+  $("#gsi-btn").classList.add("hide");
+  $("#gsi-note").textContent = "";
+  $("#wv-app").textContent = whichApp();
+  $("#wv-copy").onclick = async () => {
+    try { await navigator.clipboard.writeText(location.href); toast("Link copied"); }
+    catch(e){ prompt("Copy this link:", location.href); }
+  };
+}
+
 let gsiReady = false, oneTapShown = false;
 /* Only ever offered to someone who is genuinely signed out. */
 function oneTap(){
@@ -855,6 +889,7 @@ function dismissOneTap(){
 let gsiTries = 0;
 function initAuth(){
   if(!GOOGLE_CLIENT_ID){ showSetupHelp(); return; }
+  if(inAppBrowser()){ showWebviewHelp(); return; }
 
   // the GIS script is async — wait for it rather than racing it
   if(!window.google?.accounts?.id){
@@ -876,6 +911,9 @@ function initAuth(){
     google.accounts.id.renderButton($("#gsi-btn"),
       { theme:"outline", size:"large", shape:"pill", text:"continue_with", width:300 });
     gsiReady = true;
+    setTimeout(()=>{
+      if(!me && $("#gsi-btn") && $("#gsi-btn").children.length === 0) showWebviewHelp();
+    }, 5000);
     // Do NOT prompt yet. In cloud mode the stored Firebase session may already
     // be signing this person in, and One Tap would then float over an app they
     // are demonstrably already inside. offerOneTap() is called once we know.
@@ -1169,7 +1207,8 @@ $("#house-switch").onclick = () => {
      </div>
      <div style="margin-top:14px;border-top:1px solid var(--separator);padding-top:12px">
        <h2 style="font-size:14px">Invite your housemates</h2>
-       <p class="sub">Send them this code. They'll ask to join, and ${isAdmin(H())?'you':'the admin'} approves them.</p>
+       <p class="sub">Send them this code. They'll ask to join, and ${isAdmin(H())?'you':'the admin'} approves them.<br>
+         <b>Tell them to open the link in Safari or Chrome</b> — Google blocks sign-in inside other apps' browsers.</p>
        <div class="field" style="text-align:center;font-size:24px;font-weight:800;letter-spacing:.18em;color:var(--tint);font-family:ui-monospace,monospace">${cur}</div>
        <div class="row"><button class="btn" id="btn-copy" data-ref="copy-code-btn">Copy code</button><button class="btn ghost" id="btn-share">Share</button></div>
      </div>
@@ -1186,7 +1225,7 @@ $("#house-switch").onclick = () => {
     catch(e){ prompt("Copy this code:", cur); }
   };
   $("#btn-share").onclick = async () => {
-    const text = `Join our HouseCart household “${H().name}” — code ${cur}`;
+    const text = `Join our HouseCart household “${H().name}” — code ${cur}. Open the link in Safari or Chrome (not inside another app) so Google sign-in works.`;
     if(navigator.share){ try{ await navigator.share({title:"HouseCart", text, url:location.href}); }catch(e){} }
     else { try{ await navigator.clipboard.writeText(text + " " + location.href); toast("Invite copied"); }catch(e){ prompt("Send this:", text); } }
   };
@@ -2112,13 +2151,46 @@ async function setPic(dataUrl){
   toast(dataUrl ? "Picture updated" : "Picture removed");
 }
 
+/* Two states, because "Save" next to a filled-in handle looks like it hasn't
+   saved. Once it's stored it reads as stored, and you Edit it. */
+let venmoEditing = false;
+function renderVenmoCard(){
+  const box = $("#venmo-card"); if(!box) return;
+  const mine = (H() && H().members.find(m=>m.id===me.id)) || me;
+  const handle = (mine.venmo || "").replace(/^@/,"");
+  if(handle && !venmoEditing){
+    box.innerHTML = `<div class="itemrow nolead">
+      <div class="thumb">@</div>
+      <div style="flex:1;min-width:0"><div class="iname">@${esc(handle)}</div>
+        <div class="imeta">Saved — housemates can pay you back</div></div>
+      <button class="btn ghost sm" id="venmo-edit" data-ref="venmo-edit">Edit</button></div>`;
+    $("#venmo-edit").onclick = () => { venmoEditing = true; renderVenmoCard(); setTimeout(()=>$("#acct-venmo")?.focus(),60); };
+    $("#venmo-foot").innerHTML = `Used to build a link to <b>venmo.com/${esc(handle)}</b>. Check that opens your profile.`;
+  } else {
+    box.innerHTML = `<div class="pad" style="padding:var(--s-2) 0">
+      <div class="row"><input class="field" id="acct-venmo" data-ref="account-venmo-input"
+        placeholder="your-venmo" autocapitalize="off" autocorrect="off" spellcheck="false"
+        value="${esc(handle)}" style="margin:0">
+        <button class="btn sm" id="acct-save" data-ref="venmo-save">Save</button></div></div>`;
+    $("#acct-save").onclick = saveVenmo;
+    $("#acct-venmo").onkeydown = e => { if(e.key === "Enter") saveVenmo(); };
+    $("#venmo-foot").textContent = "Just the handle — the bit after venmo.com/. No @ needed.";
+  }
+}
+function saveVenmo(){
+  const v = ($("#acct-venmo").value || "").trim().replace(/^@/,"").replace(/^.*venmo\.com\//,"");
+  const m = H() && H().members.find(x=>x.id===me.id); if(m) m.venmo = v;
+  me.venmo = v; venmoEditing = false; save(); render(); renderVenmoCard();
+  toast(v ? "Venmo saved" : "Venmo cleared");
+  if(H()) cloud("setMembers", cur, H().members);
+}
+
 function renderAccount(){
   if(!me) return;
   $("#pp").innerHTML = me.pic ? `<img src="${esc(me.pic)}" alt="">` : esc(initials(me.name));
   $("#acct-name").textContent  = me.name || "";
   $("#acct-email").textContent = me.email || "";
-  const mine = (H() && H().members.find(m=>m.id===me.id)) || me;
-  $("#acct-venmo").value = mine.venmo || "";
+  renderVenmoCard();
 
   renderMyHouses();
   const cv = currentVibe(), cvar = currentVariant(), d = vibeDef(cv);
@@ -2134,12 +2206,7 @@ function renderAccount(){
       `<button class="${x.id===cvar?'on':''}" data-variant-pick="${x.id}" onclick="setVariant('${x.id}')">${x.name}</button>`).join("")}</div>`;
   }
 }
-$("#acct-save").onclick = () => {
-  const v = $("#acct-venmo").value.trim();
-  const m = H() && H().members.find(x=>x.id===me.id); if(m) m.venmo = v;
-  me.venmo = v; save(); render(); toast(v ? "Venmo linked" : "Venmo cleared");
-  if(H()) cloud("setMembers", cur, H().members);
-};
+
 $("#pic-file").onchange = async e => {
   const f = e.target.files[0]; if(!f) return;
   try { await setPic(await shrinkImage(f)); }
