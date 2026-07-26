@@ -30,9 +30,9 @@
    ══════════════════════════════════════════════════════════════════════════ */
 :root{
   --bg:#F2F2F7; --surface:#FFFFFF; --surface-2:rgba(120,120,128,.12);
-  --material:rgba(249,249,249,.82);
-  --label:#000; --label-2:rgba(60,60,67,.60); --label-3:rgba(60,60,67,.30);
-  --separator:rgba(60,60,67,.29);
+  --material:rgba(249,249,249,.97);
+  --label:#000; --label-2:rgba(60,60,67,.82); --label-3:rgba(60,60,67,.50);
+  --separator:rgba(60,60,67,.40);
   --tint:#0F7B41; --tint-soft:rgba(15,123,65,.12); --on-tint:#fff;
   --positive:#0F7B41; --negative:#C81E2B; --warning:#C25200;
   --r-control:8px; --r-group:12px; --r-button:12px; --r-sheet:16px; --r-icon:8px;
@@ -46,8 +46,8 @@
 }
 @media (prefers-color-scheme:dark){:root{
   --bg:#000; --surface:#1C1C1E; --surface-2:rgba(120,120,128,.24);
-  --material:rgba(22,22,24,.78);
-  --label:#fff; --label-2:rgba(235,235,245,.60); --label-3:rgba(235,235,245,.30);
+  --material:rgba(22,22,24,.97);
+  --label:#fff; --label-2:rgba(235,235,245,.82); --label-3:rgba(235,235,245,.50);
   --separator:rgba(84,84,88,.65);
   --tint:#30D158; --tint-soft:rgba(48,209,88,.16); --on-tint:#003514;
   --positive:#30D158; --negative:#FF453A; --warning:#FF9F0A;
@@ -72,7 +72,10 @@ input,select{font:inherit;letter-spacing:inherit;color:inherit}
 code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em}
 .hide{display:none!important}
 #app{height:100dvh;display:flex;flex-direction:column;overflow:hidden}
-#app>main{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding-bottom:var(--s-6)}
+/* A flex item with `margin:0 auto` (from .wrap) loses align-self:stretch and
+   shrink-wraps to its content — which silently changed the page inset whenever
+   a vibe swapped to a narrower typeface. width:100% pins it. */
+#app>main{flex:1 1 auto;width:100%;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding-bottom:var(--s-6)}
 #signin,#housegate,#waiting{height:100dvh;overflow-y:auto;overscroll-behavior:contain}
 .wrap{max-width:520px;margin:0 auto;padding:0 var(--inset)}
 
@@ -86,9 +89,9 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em}
 /* ── 1. MINIMAL ─ warm greys, hairline art, huge air. light | dark ────────── */
 html[data-vibe="minimal"]{
   --bg:#F7F6F4; --surface:#FFFFFF; --surface-2:rgba(30,26,22,.06);
-  --material:rgba(247,246,244,.86);
-  --label:#14120F; --label-2:rgba(20,18,15,.60); --label-3:rgba(20,18,15,.30);
-  --separator:rgba(20,18,15,.13);
+  --material:rgba(247,246,244,.97);
+  --label:#14120F; --label-2:rgba(20,18,15,.82); --label-3:rgba(20,18,15,.50);
+  --separator:rgba(20,18,15,.40);
   --tint:#2E2A25; --tint-soft:rgba(46,42,37,.07); --on-tint:#FFFFFF;
   --positive:#2F6B4F; --negative:#8C2F2A; --warning:#8A5A1E;
   --r-group:8px; --r-button:8px; --r-control:6px; --r-icon:6px; --r-sheet:12px;
@@ -96,15 +99,15 @@ html[data-vibe="minimal"]{
   --font-ui:"Jost",-apple-system,system-ui,sans-serif;
   --btn-track:.02em;
   --bgart:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='420' height='420'%3E%3Cpath d='M40 300c60-120 130-40 170-120s120-40 170-110' fill='none' stroke='%23000' stroke-opacity='.055' stroke-width='1.2'/%3E%3C/svg%3E");
-  --bgart-size:420px 420px;
+  --bgart-size:420px 420px; --bgart-op:.7;
 }
 html[data-vibe="minimal"] body,html[data-vibe="minimal"] .iname,html[data-vibe="minimal"] .lname input{font-weight:350}
 html[data-vibe="minimal"] .ltitle{font-weight:300;letter-spacing:.01em}
 html[data-vibe="minimal"][data-variant="dark"]{
   --bg:#100F0E; --surface:#1A1917; --surface-2:rgba(245,243,239,.09);
-  --material:rgba(16,15,14,.84);
-  --label:#F6F4F0; --label-2:rgba(246,244,240,.62); --label-3:rgba(246,244,240,.30);
-  --separator:rgba(246,244,240,.16);
+  --material:rgba(16,15,14,.97);
+  --label:#F6F4F0; --label-2:rgba(246,244,240,.82); --label-3:rgba(246,244,240,.50);
+  --separator:rgba(246,244,240,.40);
   --tint:#EFEBE4; --tint-soft:rgba(239,235,228,.12); --on-tint:#100F0E;
   --positive:#7FCFA4; --negative:#F08A80; --warning:#E3B469;
   --bgart:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='420' height='420'%3E%3Cpath d='M40 300c60-120 130-40 170-120s120-40 170-110' fill='none' stroke='%23fff' stroke-opacity='.07' stroke-width='1.2'/%3E%3C/svg%3E");
@@ -112,12 +115,13 @@ html[data-vibe="minimal"][data-variant="dark"]{
 
 /* ── 2. Y2K ─ pixel type, halftone, chrome. pink | blue ──────────────────── */
 html[data-vibe="y2k"]{
+  --bgart-op:.45;
   --track:0px;
   --bg:#FFE6F7; --surface:#FFFFFF; --surface-2:rgba(229,0,122,.10);
-  --material:rgba(255,230,247,.88);
-  --label:#1B0140; --label-2:rgba(27,1,64,.66); --label-3:rgba(27,1,64,.34);
-  --separator:rgba(229,0,122,.28);
-  --tint:#D6006E; --tint-soft:rgba(214,0,110,.12); --on-tint:#FFFFFF;
+  --material:rgba(255,230,247,.97);
+  --label:#1B0140; --label-2:rgba(27,1,64,.82); --label-3:rgba(27,1,64,.50);
+  --separator:rgba(229,0,122,.40);
+  --tint:#A80056; --tint-soft:rgba(168,0,86,.12); --on-tint:#FFFFFF;
   --positive:#00806A; --negative:#C7003C; --warning:#9A5B00;
   --r-group:14px; --r-button:999px; --r-control:999px; --r-icon:8px; --r-sheet:18px;
   --font-display:"Press Start 2P",monospace;
@@ -129,33 +133,34 @@ html[data-vibe="y2k"]{
     radial-gradient(circle at 88% 4%, rgba(182,255,61,.30) 0 18%, transparent 58%),
     radial-gradient(circle at 78% 92%, rgba(255,214,0,.28) 0 20%, transparent 60%);
   --bgtex:radial-gradient(rgba(214,0,110,.20) 1.1px, transparent 1.2px);
-  --bgtex-size:9px 9px; --bgtex-op:.5;
+  --bgtex-size:9px 9px; --bgtex-op:.3;
 }
 html[data-vibe="y2k"] .ltitle{font-size:26px;line-height:34px;letter-spacing:0}
 html[data-vibe="y2k"] .sheet h2,html[data-vibe="y2k"] .card h2{font-size:14px;line-height:22px}
 html[data-vibe="y2k"] .bignum{font-size:22px;line-height:32px}
 html[data-vibe="y2k"][data-variant="blue"]{
-  --bg:#DFF1FF; --surface-2:rgba(0,82,255,.10);
-  --material:rgba(223,241,255,.88);
-  --label:#04104A; --label-2:rgba(4,16,74,.66); --label-3:rgba(4,16,74,.34);
-  --separator:rgba(0,82,255,.28);
-  --tint:#0052FF; --tint-soft:rgba(0,82,255,.12);
+  --bg:#DFF1FF; --surface-2:rgba(0,63,196,.10);
+  --material:rgba(223,241,255,.97);
+  --label:#04104A; --label-2:rgba(4,16,74,.82); --label-3:rgba(4,16,74,.50);
+  --separator:rgba(0,63,196,.40);
+  --tint:#003FC4; --tint-soft:rgba(0,63,196,.12);
   --btn-shadow:0 3px 0 rgba(4,16,74,.28);
   --bgart:
     radial-gradient(circle at 12% 10%, rgba(255,0,170,.24) 0 22%, transparent 60%),
     radial-gradient(circle at 88% 4%, rgba(0,229,255,.34) 0 18%, transparent 58%),
     radial-gradient(circle at 78% 92%, rgba(182,255,61,.28) 0 20%, transparent 60%);
-  --bgtex:radial-gradient(rgba(0,82,255,.20) 1.1px, transparent 1.2px);
+  --bgtex:radial-gradient(rgba(0,63,196,.20) 1.1px, transparent 1.2px);
 }
 
 /* ── 3. SEVENTIES ─ avocado, mustard, burnt orange; waves and checks ─────── */
 html[data-vibe="seventies"]{
+  --bgart-op:.42;
   --track:0px;
   --bg:#F0DFBC; --surface:#FFF7E6; --surface-2:rgba(92,60,15,.12);
-  --material:rgba(240,223,188,.88);
-  --label:#2A1A08; --label-2:rgba(42,26,8,.68); --label-3:rgba(42,26,8,.36);
-  --separator:rgba(120,80,25,.30);
-  --tint:#B14A12; --tint-soft:rgba(177,74,18,.13); --on-tint:#FFF7E6;
+  --material:rgba(240,223,188,.97);
+  --label:#2A1A08; --label-2:rgba(42,26,8,.82); --label-3:rgba(42,26,8,.50);
+  --separator:rgba(120,80,25,.40);
+  --tint:#8E3A0C; --tint-soft:rgba(142,58,12,.13); --on-tint:#FFF7E6;
   --positive:#4E6B18; --negative:#9C2A16; --warning:#8A5B08;
   --r-group:18px; --r-button:999px; --r-control:999px; --r-icon:10px; --r-sheet:22px;
   --font-display:"Alfa Slab One",Georgia,serif;
@@ -165,18 +170,19 @@ html[data-vibe="seventies"]{
     repeating-linear-gradient(45deg, rgba(120,145,40,.16) 0 22px, transparent 22px 44px),
     repeating-linear-gradient(-45deg, rgba(200,130,20,.13) 0 22px, transparent 22px 44px);
   --bgtex:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='40'%3E%3Cpath d='M0 20q15-16 30 0t30 0 30 0 30 0' fill='none' stroke='%23a4530f' stroke-opacity='.20' stroke-width='2.5'/%3E%3C/svg%3E");
-  --bgtex-size:120px 40px; --bgtex-op:.55;
+  --bgtex-size:120px 40px; --bgtex-op:.32;
 }
 html[data-vibe="seventies"] .ltitle{letter-spacing:-.01em}
 
 /* ── 4. EARTHY ─ terracotta, olive, ochre; linen and clay ────────────────── */
 html[data-vibe="earthy"]{
+  --bgart-op:.5;
   --track:0px;
   --bg:#EFE2D2; --surface:#FCF6EE; --surface-2:rgba(90,56,34,.11);
-  --material:rgba(239,226,210,.88);
-  --label:#241811; --label-2:rgba(36,24,17,.68); --label-3:rgba(36,24,17,.34);
-  --separator:rgba(120,85,58,.26);
-  --tint:#9C4A22; --tint-soft:rgba(156,74,34,.12); --on-tint:#FCF6EE;
+  --material:rgba(239,226,210,.97);
+  --label:#241811; --label-2:rgba(36,24,17,.82); --label-3:rgba(36,24,17,.50);
+  --separator:rgba(120,85,58,.40);
+  --tint:#7B3617; --tint-soft:rgba(123,54,23,.12); --on-tint:#FCF6EE;
   --positive:#4F6437; --negative:#8E2F22; --warning:#8A6014;
   --r-group:16px; --r-button:14px; --r-control:10px; --r-icon:9px; --r-sheet:20px;
   --font-display:"Fraunces",Georgia,serif;
@@ -186,18 +192,19 @@ html[data-vibe="earthy"]{
     radial-gradient(ellipse at 15% 0%, rgba(180,120,60,.24) 0 42%, transparent 72%),
     radial-gradient(ellipse at 90% 100%, rgba(110,125,70,.22) 0 40%, transparent 70%);
   --bgtex:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='6' height='6'%3E%3Cpath d='M0 0h6M0 3h6' stroke='%236b4a2e' stroke-opacity='.16' stroke-width='.6'/%3E%3Cpath d='M0 0v6M3 0v6' stroke='%236b4a2e' stroke-opacity='.10' stroke-width='.6'/%3E%3C/svg%3E");
-  --bgtex-size:6px 6px; --bgtex-op:.75;
+  --bgtex-size:6px 6px; --bgtex-op:.45;
 }
 
 /* ── 5. COMIC ─ primaries, halftone, hard black outlines, burst rays ─────── */
 html[data-vibe="comic"]{
+  --bgart-op:.34;
   --track:0px;
   --bg:#FFE04A; --surface:#FFFFFF; --surface-2:rgba(11,11,11,.10);
-  --material:rgba(255,224,74,.90);
-  --label:#0B0B0B; --label-2:rgba(11,11,11,.68); --label-3:rgba(11,11,11,.36);
+  --material:rgba(255,224,74,.97);
+  --label:#0B0B0B; --label-2:rgba(11,11,11,.82); --label-3:rgba(11,11,11,.50);
   --separator:rgba(11,11,11,.55);
-  --tint:#D3002B; --tint-soft:rgba(211,0,43,.12); --on-tint:#FFFFFF;
-  --positive:#00713A; --negative:#D3002B; --warning:#B24A00;
+  --tint:#B00023; --tint-soft:rgba(176,0,35,.12); --on-tint:#FFFFFF;
+  --positive:#00602F; --negative:#D3002B; --warning:#B24A00;
   --r-group:12px; --r-button:999px; --r-control:999px; --r-icon:7px; --r-sheet:16px;
   --font-display:"Bangers",Impact,sans-serif;
   --font-ui:"Nunito",-apple-system,system-ui,sans-serif;
@@ -207,7 +214,7 @@ html[data-vibe="comic"]{
   --btn-shadow:3px 3px 0 #0B0B0B;
   --bgart:repeating-conic-gradient(from 0deg at 50% 22%, rgba(0,86,214,.20) 0deg 7deg, transparent 7deg 14deg);
   --bgtex:radial-gradient(#0b0b0b 1.3px, transparent 1.4px);
-  --bgtex-size:11px 11px; --bgtex-op:.14;
+  --bgtex-size:11px 11px; --bgtex-op:.10;
 }
 html[data-vibe="comic"] .ltitle{font-size:44px;line-height:46px;letter-spacing:.02em;
   -webkit-text-stroke:1.5px #0B0B0B;text-shadow:3px 3px 0 rgba(0,0,0,.18)}
@@ -216,11 +223,12 @@ html[data-vibe="comic"] .tag{border:1.5px solid #0B0B0B}
 
 /* ── 6. STEAMPUNK ─ brass on soot, gears, engraved serif ─────────────────── */
 html[data-vibe="steampunk"]{
+  --bgart-op:.55;
   --track:0px;
   --bg:#15100B; --surface:#241C13; --surface-2:rgba(214,176,106,.14);
-  --material:rgba(21,16,11,.86);
-  --label:#F4E6CB; --label-2:rgba(244,230,203,.66); --label-3:rgba(244,230,203,.34);
-  --separator:rgba(198,154,78,.34);
+  --material:rgba(21,16,11,.97);
+  --label:#F4E6CB; --label-2:rgba(244,230,203,.82); --label-3:rgba(244,230,203,.50);
+  --separator:rgba(198,154,78,.40);
   --tint:#D9A75A; --tint-soft:rgba(217,167,90,.14); --on-tint:#1A130C;
   --positive:#A9C46C; --negative:#E0654A; --warning:#E0A94A;
   --r-group:8px; --r-button:8px; --r-control:6px; --r-icon:5px; --r-sheet:10px;
@@ -233,7 +241,7 @@ html[data-vibe="steampunk"]{
     radial-gradient(ellipse at 50% 0%, rgba(217,167,90,.16) 0 34%, transparent 68%);
   --bgart-size:260px 260px, 100% 100%;
   --bgtex:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Cpath d='M0 0h4v4H0z' fill='%23000' fill-opacity='.28'/%3E%3Cpath d='M0 0h2v2H0z' fill='%23d9a75a' fill-opacity='.10'/%3E%3C/svg%3E");
-  --bgtex-size:4px 4px; --bgtex-op:.5;
+  --bgtex-size:4px 4px; --bgtex-op:.35;
 }
 html[data-vibe="steampunk"] .ltitle{letter-spacing:.03em}
 
@@ -283,16 +291,16 @@ h1,h2,h3,.ltitle,.bignum,.sheet h2,.stat .n{font-family:var(--font-display,inher
 .avatar{position:relative;width:29px;height:29px;border-radius:50%;background:var(--tint);color:var(--on-tint);display:grid;place-items:center;font-size:12px;font-weight:600;letter-spacing:0;flex:0 0 auto;overflow:hidden}
 .avatar img{width:100%;height:100%;object-fit:cover}
 .ltitle{font-size:34px;line-height:41px;font-weight:700;letter-spacing:-.4px;padding:var(--s-2) 0 var(--s-micro)}
-.lsub{font-size:13px;line-height:18px;letter-spacing:0;color:var(--label-2);padding-bottom:var(--s-3)}
+.lsub{font-size:13px;line-height:18px;letter-spacing:0;color:var(--label-2);padding-bottom:var(--s-4)}
 
 /* ---------- grouped sections ---------- */
-.card{background:var(--surface);border-radius:var(--r-group);padding:var(--s-base) var(--inset);margin:0 0 var(--s-3);
+.card{background:var(--surface);border-radius:var(--r-group);padding:var(--s-base) var(--inset);margin:0 0 var(--s-4);
   border:var(--card-border,0);box-shadow:var(--card-shadow,none)}
 .card.pad{padding:var(--s-2) var(--inset)}
 .card h2{font-size:17px;line-height:22px;font-weight:600;padding:var(--s-base) 0 var(--s-micro)}
 .card.pad h2{padding:0}
-.sechead{font-size:12px;line-height:16px;letter-spacing:.05em;text-transform:uppercase;color:var(--label-2);padding:0 var(--inset) var(--s-base);margin-top:var(--s-base)}
-.secfoot{font-size:13px;line-height:18px;letter-spacing:0;color:var(--label-2);padding:var(--s-base) var(--micro,4px) 0;margin:calc(-1 * var(--s-3)) 0 var(--s-4)}
+.sechead{font-size:12px;line-height:16px;letter-spacing:.05em;text-transform:uppercase;color:var(--label-2);padding:0 var(--inset) var(--s-base);margin-top:calc(-1 * var(--s-2))}
+.secfoot{font-size:13px;line-height:18px;letter-spacing:0;color:var(--label-2);padding:var(--s-base) var(--inset) 0;margin:calc(-1 * var(--s-4)) 0 var(--s-4)}
 .sub{color:var(--label-2);font-size:13px;line-height:18px;letter-spacing:0}
 .row{display:flex;gap:var(--s-base);align-items:center}
 .tag{font-size:12px;font-weight:600;letter-spacing:0;padding:2px 7px;border-radius:6px;background:var(--tint-soft);color:var(--tint)}
@@ -305,7 +313,7 @@ h1,h2,h3,.ltitle,.bignum,.sheet h2,.stat .n{font-family:var(--font-display,inher
 .btn{background:var(--tint);color:var(--on-tint);border-radius:var(--r-button);min-height:48px;padding:var(--s-2);
   font-family:var(--font-ui,inherit);font-size:17px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;
   gap:8px;width:100%;transition:opacity .15s;border:var(--btn-border,0);box-shadow:var(--btn-shadow,none);letter-spacing:var(--btn-track,inherit)}
-main > .btn, main > section > .btn{margin-bottom:var(--s-3)}
+main > .btn, main > section > .btn{margin-bottom:var(--s-4)}
 .btn + .btn{margin-top:var(--s-base)}
 .btn:active{opacity:.72}
 .btn.ghost{background:var(--tint-soft);color:var(--tint)}

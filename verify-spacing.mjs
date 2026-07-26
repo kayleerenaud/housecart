@@ -36,6 +36,29 @@ for(const tab of ['pantry','settle','spend','account']){
   ok(edges.every(e=>e==='16/16'), `${tab}: every block sits exactly 16pt from both edges`);
 }
 
+console.log('\n=== the 16pt inset holds in EVERY vibe ===');
+{
+  const vibes = await p.evaluate(()=>VIBES.map(v=>v.id));
+  const rows = [];
+  for(const v of vibes){
+    await p.evaluate(id=>{setVibe(id);go('pantry');}, v); await p.waitForTimeout(600);
+    const m = await p.evaluate(()=>{
+      const main=document.querySelector('#app>main');
+      const card=document.querySelector('#app>main .card').getBoundingClientRect();
+      const title=document.querySelector('.ltitle').getBoundingClientRect();
+      const w=main.getBoundingClientRect();
+      return {l:Math.round(card.left-w.left+ (w.left)), t:Math.round(title.left), cl:Math.round(card.left),
+              r:Math.round(390-card.right), mw:Math.round(w.width)};
+    });
+    rows.push([v,m]);
+    console.log(`  ${v.padEnd(11)} card ${m.cl}/${m.r}  title ${m.t}  main width ${m.mw}`);
+  }
+  ok(rows.every(([,m])=>m.cl===16 && m.r===16 && m.t===16),
+     'every vibe puts cards and titles exactly 16pt from both edges');
+  ok(rows.every(([,m])=>m.mw===390), 'the scroll area fills the screen in every vibe (no shrink-wrap)');
+  await p.evaluate(()=>setVibe('minimal')); await p.waitForTimeout(400);
+}
+
 console.log('\n=== structural gaps are multiples of 8 ===');
 await p.evaluate(()=>go('pantry')); await p.waitForTimeout(250);
 const gaps = await p.evaluate(()=>{
@@ -43,7 +66,9 @@ const gaps = await p.evaluate(()=>{
   document.querySelectorAll('#app>main .card').forEach(el=>{
     if(!el.offsetParent) return;
     const mb = parseFloat(getComputedStyle(el).marginBottom);
-    seen.push(mb); if(mb % 8 !== 0) bad.push('card margin-bottom '+mb);
+    seen.push(mb);
+    if(mb % 8 !== 0) bad.push('card margin-bottom '+mb);
+    if(mb < 32) bad.push('card margin-bottom '+mb+' is below the 32pt section gap');
     const ps = getComputedStyle(el);
     [ps.paddingLeft, ps.paddingRight, ps.paddingTop, ps.paddingBottom].forEach(v=>{
       const n=parseFloat(v); if(n % 4 !== 0) bad.push('card padding '+n);
@@ -80,7 +105,8 @@ const h = await p.evaluate(()=>{
   return {sec,row};
 });
 console.log(`  between sections ${h.sec}pt · inside a row ${h.row}pt`);
-ok(h.sec >= h.row*2, 'gaps between sections are larger than gaps inside them');
+ok(h.sec >= 32, `section-to-section gap is a major increment (${h.sec}pt, spec says 32 or 48)`);
+ok(h.sec >= h.row*4, 'gaps between sections dwarf gaps inside them (proportional hierarchy)');
 
 console.log('\n=== squircle corners ===');
 const sq = await p.evaluate(()=>({

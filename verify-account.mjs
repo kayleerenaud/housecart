@@ -81,7 +81,8 @@ ok(await p.isVisible('[data-variant-pick="blue"]'), 'Y2K offers a pink/blue togg
 await p.click('[data-variant-pick="blue"]'); await p.waitForTimeout(300);
 const yb = await p.evaluate(()=>getComputedStyle(document.documentElement).getPropertyValue('--tint').trim());
 console.log('   y2k blue tint:', yb);
-ok(yb.toLowerCase()==='#0052ff', 'Y2K · Blue swaps the accent to blue');
+const [yr,yg,ybl] = [1,3,5].map(i=>parseInt(yb.replace('#','').slice(i-1,i+1),16));
+ok(ybl > yr + 60 && ybl > yg + 60, `Y2K · Blue swaps the accent to a blue (${yb})`);
 await p.evaluate(()=>setVibe('comic')); await p.waitForTimeout(300);
 ok(!(await p.isVisible('[data-ref="variant-seg"]')), 'a vibe without variants shows no toggle');
 
