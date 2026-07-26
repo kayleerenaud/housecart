@@ -19,10 +19,13 @@ service cloud.firestore {
         && request.resource.data.adminId == request.auth.uid
         && request.resource.data.memberIds.size() == 1
         && request.auth.uid in request.resource.data.memberIds;
+      // members may edit house data; only the admin may change WHO is a member,
+      // except that anyone may remove themselves (i.e. leave the house)
       allow update: if isMember(code)
         && request.resource.data.adminId == resource.data.adminId
         && (request.resource.data.memberIds == resource.data.memberIds
-            || request.auth.uid == resource.data.adminId);
+            || request.auth.uid == resource.data.adminId
+            || request.resource.data.memberIds == resource.data.memberIds.removeAll([request.auth.uid]));
       allow delete: if isAdmin(code);
 
       match /joinRequests/{uid} {

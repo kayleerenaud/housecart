@@ -1020,11 +1020,13 @@ $("#house-switch").onclick = () => {
        <div class="field" style="text-align:center;font-size:24px;font-weight:800;letter-spacing:.18em;color:var(--tint);font-family:ui-monospace,monospace">${cur}</div>
        <div class="row"><button class="btn" id="btn-copy" data-ref="copy-code-btn">Copy code</button><button class="btn ghost" id="btn-share">Share</button></div>
      </div>
-     <div class="row" style="margin-top:14px;border-top:1px solid var(--separator);padding-top:12px">
+     <div id="house-danger" style="margin-top:var(--s-4);border-top:1px solid var(--separator);padding-top:var(--s-2)"></div>
+     <div class="row" style="margin-top:var(--s-3)">
        <button class="btn ghost sm" onclick="closeSheet()">Close</button>
        <div class="spacer" style="flex:1"></div>
        <button class="btn ghost sm" onclick="confirmSignOut()" style="color:var(--negative)">Sign out</button>
      </div>`);
+  renderHouseDanger();
   $("#btn-copy").onclick = async () => {
     const msg = `Join our HouseCart household "${H().name}" with code ${cur}`;
     try{ await navigator.clipboard.writeText(cur); toast("Code copied"); }
@@ -1042,6 +1044,78 @@ function confirmSignOut(){
       ? "Sign out? This device is the only copy of this house's data, so signing out erases it."
       : "Sign out of HouseCart?")) signOut();
 }
+function renderHouseDanger(){
+  const box = $("#house-danger"); if(!box) return;
+  const h = H(), admin = isAdmin(h);
+  const others = h.members.filter(m => m.id !== me.id);
+  box.innerHTML =
+    (admin && others.length ? `<h2 style="font-size:14px">Housemates</h2>
+      <p class="sub" style="margin-bottom:var(--s-base)">Removing someone keeps the receipts they were part of — only their access ends.</p>
+      ${others.map(m=>`<div class="itemrow">
+        <div class="avatar">${m.pic?`<img src="${esc(m.pic)}">`:esc(initials(m.name))}</div>
+        <div style="flex:1;min-width:0"><div class="iname">${esc(m.name)}</div></div>
+        <button class="btn ghost sm" style="color:var(--negative)" onclick="removeHousemate('${m.id}')">Remove</button>
+      </div>`).join("")}` : "")
+    + (admin
+        ? `<h2 style="font-size:14px;margin-top:var(--s-3)">Delete this household</h2>
+           <p class="sub" style="margin-bottom:var(--s-base)">Deletes the pantry, every receipt and every balance — for all ${h.members.length} of you. It cannot be undone.</p>
+           <button class="btn ghost" style="color:var(--negative)" onclick="deleteHouseFlow()" data-ref="delete-house-btn">Delete “${esc(h.name)}”</button>`
+        : `<h2 style="font-size:14px">Leave this household</h2>
+           <p class="sub" style="margin-bottom:var(--s-base)">You'll lose access to its pantry and balances. ${esc(adminOf(h).name.split(" ")[0])} keeps the house.</p>
+           <button class="btn ghost" style="color:var(--negative)" onclick="leaveHouseFlow()" data-ref="leave-house-btn">Leave “${esc(h.name)}”</button>`);
+}
+
+function forgetHouseLocally(code){
+  delete houses[code];
+  cur = Object.keys(houses).find(c => houses[c].members.some(m => m.id === me.id)) || null;
+  save(); closeSheet(); route();
+}
+
+async function deleteHouseFlow(){
+  const h = H(); if(!isAdmin(h)) return toast("Only the house admin can delete it");
+  const typed = prompt(`This deletes “${h.name}” for everyone — pantry, receipts and balances.\n\nType the household name to confirm:`);
+  if(typed === null) return;
+  if(typed.trim().toLowerCase() !== h.name.trim().toLowerCase()) return toast("Name didn't match — nothing deleted");
+  const code = h.code;
+  toast("Deleting…");
+  if(CLOUD()){
+    try { await window.HC_SYNC.deleteHouse(code); }
+    catch(e){ console.warn(e); return toast(fbErr(e)); }
+  }
+  forgetHouseLocally(code);
+  toast("Household deleted");
+}
+
+async function leaveHouseFlow(){
+  const h = H();
+  if(isAdmin(h)) return toast("You created this house — delete it instead");
+  if(!confirm(`Leave “${h.name}”? You'll need a new request to get back in.`)) return;
+  const code = h.code;
+  if(CLOUD()){
+    try { await window.HC_SYNC.removeMember(code, me.id); }
+    catch(e){
+      console.warn(e);
+      if(String(e && e.code).includes("permission-denied"))
+        return toast("Rules don't allow leaving yet — ask the admin to remove you");
+      return toast(fbErr(e));
+    }
+  } else {
+    h.members = h.members.filter(m => m.id !== me.id);
+  }
+  forgetHouseLocally(code);
+  toast("You left the household");
+}
+
+async function removeHousemate(uid){
+  const h = H(); if(!isAdmin(h)) return toast("Only the house admin can remove people");
+  const m = h.members.find(x => x.id === uid); if(!m) return;
+  if(!confirm(`Remove ${m.name} from “${h.name}”?`)) return;
+  h.members = h.members.filter(x => x.id !== uid);
+  save(); render(); renderHouseDanger();
+  if(CLOUD()) await cloud("removeMember", h.code, uid);
+  toast(`${m.name.split(" ")[0]} removed`);
+}
+
 function signOut(){
   if(unwatchReq){ try{ unwatchReq(); }catch(e){} unwatchReq = null; }
   if(CLOUD()){ try{ window.HC_SYNC.stop(); window.HC_SYNC.signOutFirebase(); }catch(e){} }
@@ -1976,7 +2050,7 @@ applyVibe(currentVibe(), currentVariant());
 route();
 
 /* expose for inline handlers */
-Object.assign(window,{signIn,closeSheet,approveJoin,denyJoin,cancelRequest,recheckRequest,isAdmin,addManual,delItem,toggleLine,toggleWho,renameLine,toggleExpand,signOut,confirmSignOut,setPrice,setVibe,setVariant,renderAccount,swipeDelete,switchHouse,leaveToGate,recordPayment,tripDetail,onBarcode,$,cycleStock,restock,itemSheet,setWeight,balanceWeights});
+Object.assign(window,{signIn,closeSheet,approveJoin,denyJoin,cancelRequest,recheckRequest,isAdmin,addManual,delItem,toggleLine,toggleWho,renameLine,toggleExpand,signOut,confirmSignOut,setPrice,setVibe,setVariant,renderAccount,swipeDelete,deleteHouseFlow,leaveHouseFlow,removeHousemate,renderHouseDanger,switchHouse,leaveToGate,recordPayment,tripDetail,onBarcode,$,cycleStock,restock,itemSheet,setWeight,balanceWeights});
 </script>
 </body>
 </html>

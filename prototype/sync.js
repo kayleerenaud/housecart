@@ -17,7 +17,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
 import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
-  doc, collection, onSnapshot, setDoc, updateDoc, deleteDoc, getDoc,
+  doc, collection, onSnapshot, setDoc, updateDoc, deleteDoc, getDoc, getDocs,
   query, where
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 
@@ -147,10 +147,35 @@ const putPayment = (code, p)    => setDoc(doc(db,"houses",code,"payments",p.id),
 
 const codeTaken = code => getDoc(doc(db,"houseCodes",code)).then(d => d.exists());
 
+/* Deleting a house takes its pantry, receipts and balances with it, for
+   everyone. Subcollections don't cascade in Firestore, so they're cleared
+   explicitly before the house document and its code entry. */
+async function deleteHouse(code){
+  for(const sub of ["pantry","trips","payments","joinRequests"]){
+    const snap = await getDocs(collection(db,"houses",code,sub));
+    await Promise.all(snap.docs.map(d => deleteDoc(d.ref)));
+  }
+  await deleteDoc(doc(db,"houses",code));
+  await deleteDoc(doc(db,"houseCodes",code));
+}
+
+/* Used both by an admin removing someone and by a member letting themselves
+   out. The rules decide which of those is allowed. */
+async function removeMember(code, uid){
+  const ref = doc(db,"houses",code);
+  const snap = await getDoc(ref);
+  if(!snap.exists()) return;
+  const h = snap.data();
+  await updateDoc(ref, {
+    memberIds: (h.memberIds || []).filter(x => x !== uid),
+    members:   (h.members   || []).filter(m => m.id !== uid)
+  });
+}
+
 window.HC_SYNC = {
   ready: true, signInWithGoogleIdToken, onUser, signOutFirebase: () => signOut(auth),
   watchHouses, watchMyRequest, peekHouse, createHouse, requestJoin, cancelJoin,
   approveJoin, denyJoin, setMembers, putPantry, dropPantry, putTrip, putPayment,
-  codeTaken, stop
+  codeTaken, deleteHouse, removeMember, stop
 };
 window.dispatchEvent(new Event("hc-sync-ready"));
