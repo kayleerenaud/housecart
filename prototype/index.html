@@ -332,6 +332,10 @@ main > .btn, main > section > .btn{margin-bottom:var(--s-4)}
 .imeta{color:var(--label-2);font-size:13px;line-height:18px;letter-spacing:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .thumb{width:29px;height:29px;border-radius:var(--r-icon);background:var(--surface-2);flex:0 0 auto;object-fit:cover;display:grid;place-items:center;color:var(--label-2)}
 .thumb svg{width:17px;height:17px;display:block;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.chev{width:8px;height:13px;flex:0 0 auto;stroke:var(--label-3);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+/* Belt and braces: an inline SVG with no width defaults to filling its box.
+   Nothing in a row is ever supposed to be huge, so cap them all. */
+.itemrow svg,.line svg,.see svg,.totrow svg,.wrow svg,.housepill svg{max-width:32px;max-height:32px}
 .x{color:var(--label-3);font-size:19px;padding:4px 6px;line-height:1}
 
 /* ---------- receipt ---------- */
