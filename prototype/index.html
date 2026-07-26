@@ -1156,8 +1156,14 @@ async function releaseName(code, name){
 function renderHouseDanger(){
   const box = $("#house-danger"); if(!box) return;
   const h = H(), admin = isAdmin(h);
+  const renameBlock = admin ? `<h2 style="font-size:14px">Rename</h2>
+      <p class="sub" style="margin-bottom:var(--s-base)">Household names are unique across HouseCart. The code stays the same.</p>
+      <div class="row"><input class="field" id="hn-new" data-ref="rename-input" value="${esc(h.name)}"
+        autocapitalize="words" autocorrect="off" spellcheck="false" maxlength="40" style="margin:0">
+        <button class="btn sm" id="hn-save" data-ref="rename-btn">Save</button></div>
+      <p class="sub hide" id="hn-err" style="color:var(--negative);padding-top:var(--s-micro)"></p>` : "";
   const others = h.members.filter(m => m.id !== me.id);
-  box.innerHTML =
+  box.innerHTML = renameBlock +
     (admin && others.length ? `<h2 style="font-size:14px">Housemates</h2>
       <p class="sub" style="margin-bottom:var(--s-base)">Removing someone keeps the receipts they were part of — only their access ends.</p>
       ${others.map(m=>`<div class="itemrow">
@@ -1172,6 +1178,35 @@ function renderHouseDanger(){
         : `<h2 style="font-size:14px">Leave this household</h2>
            <p class="sub" style="margin-bottom:var(--s-base)">You'll lose access to its pantry and balances. ${esc(adminOf(h).name.split(" ")[0])} keeps the house.</p>
            <button class="btn ghost" style="color:var(--negative)" onclick="leaveHouseFlow()" data-ref="leave-house-btn">Leave “${esc(h.name)}”</button>`);
+  if(admin){
+    const inp = $("#hn-new"), btn = $("#hn-save"), err = $("#hn-err");
+    const fail = m => { err.textContent = m; err.classList.remove("hide"); };
+    btn.onclick = async () => {
+      const name = inp.value.trim();
+      err.classList.add("hide");
+      if(name.length < 2) return fail("That name is a bit short");
+      if(nameKey(name) === nameKey(h.name)) return toast("That's already its name");
+      // local collision check first — it applies in both modes
+      if(Object.values(houses).some(x => x.code !== h.code && nameKey(x.name) === nameKey(name)))
+        return fail(`“${name}” is taken by another household`);
+      btn.textContent = "…"; btn.setAttribute("disabled","");
+      try {
+        if(CLOUD() && await window.HC_SYNC.nameTaken(name)){
+          btn.textContent = "Save"; btn.removeAttribute("disabled");
+          return fail(`“${name}” is taken by another household`);
+        }
+      } catch(e){}
+      const old = h.name;
+      h.name = name; save(); render();
+      if(CLOUD()){
+        try { await window.HC_SYNC.renameHouse(h.code, name); }
+        catch(e){ h.name = old; save(); render(); btn.textContent="Save"; btn.removeAttribute("disabled");
+                  return fail(fbErr(e)); }
+      }
+      closeSheet(); toast(`Renamed to ${name}`);
+    };
+    inp.onkeydown = e => { if(e.key === "Enter") btn.click(); };
+  }
 }
 
 function forgetHouseLocally(code){

@@ -141,6 +141,13 @@ async function nameTaken(name){
 
 const releaseCode = code => deleteDoc(doc(db,"houseCodes",code));
 
+/* Renaming touches two places: the house itself and its name entry. The entry
+   is what enforces global uniqueness, so it has to move too. */
+async function renameHouse(code, name){
+  await updateDoc(doc(db,"houses",code), { name });
+  await updateDoc(doc(db,"houseCodes",code), { name, nameLower: name.trim().toLowerCase() });
+}
+
 /* Every household this account belongs to OR admins, including ones whose house
    document is missing — used by Account so nothing can hide from you. */
 async function myHouseCodes(uid){
@@ -227,6 +234,6 @@ window.HC_SYNC = {
   ready: true, signInWithGoogleIdToken, onUser, signOutFirebase: () => signOut(auth),
   watchHouses, watchMyRequest, peekHouse, createHouse, requestJoin, cancelJoin,
   approveJoin, denyJoin, setMembers, putPantry, dropPantry, putTrip, putPayment,
-  codeTaken, nameTaken, myHouseCodes, releaseCode, ensureNameIndex, deleteHouse, removeMember, stop
+  codeTaken, nameTaken, myHouseCodes, releaseCode, renameHouse, ensureNameIndex, deleteHouse, removeMember, stop
 };
 window.dispatchEvent(new Event("hc-sync-ready"));
