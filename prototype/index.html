@@ -612,6 +612,14 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
           <p class="sub" style="padding-bottom:4px">Tick what the house shares. Names and prices are editable — OCR gets things wrong. <span class="tag" id="split-count">—</span></p>
           <div id="lines" data-ref="receipt-lines"></div>
         </div>
+        <div class="card" data-ref="stock-card">
+          <div class="row"><h2 style="flex:1">Add to the pantry</h2>
+            <button class="btn plain" id="btn-stock-all" style="width:auto">All</button>
+            <button class="btn plain" id="btn-stock-none" style="width:auto">None</button></div>
+          <p class="sub" style="padding-bottom:var(--s-micro)">Tick anything you want tracked in the pantry. <span class="tag" id="stock-count">none</span></p>
+          <div id="stocklist" data-ref="stock-list"></div>
+        </div>
+
         <div class="card" data-ref="split-summary">
           <h2>The split</h2>
           <div id="summary"></div>
@@ -1766,6 +1774,41 @@ function parseReceipt(text){
 }
 
 const EXPANDED = new Set();
+/* Which receipt lines should also become pantry items. Off by default — a
+   receipt is a record of money, not automatically a record of stock. */
+const STOCK_PICK = new Set();
+
+function pantryMatch(name){
+  const k = nameKey(name);
+  return (H().pantry || []).find(i => nameKey(i.name) === k);
+}
+/* Receipts SHOUT. "ORGANIC WHOLE MILK" becomes "Organic Whole Milk". */
+function tidyName(n){
+  const s = String(n||"").trim().toLowerCase().replace(/\s+/g," ");
+  return s.replace(/\b[a-z]/g, c => c.toUpperCase());
+}
+
+function renderStockList(){
+  const box = $("#stocklist"); if(!box) return;
+  if(!LINES.length){ box.innerHTML = `<div class="empty" style="padding:var(--s-3)">Nothing read off the receipt yet.</div>`; return; }
+  box.innerHTML = LINES.map(l => {
+    const have = pantryMatch(l.name);
+    const on = STOCK_PICK.has(l.id);
+    return `<div class="line ${on?'on':'off'}">
+      <div class="chk" onclick="toggleStock('${l.id}')">${on?'✓':''}</div>
+      <div class="lname" style="cursor:pointer" onclick="toggleStock('${l.id}')">
+        <div class="iname" style="font-size:15px">${esc(tidyName(l.name))}</div>
+        ${have?`<div class="imeta">already in the pantry — will be marked full</div>`:``}
+      </div>
+    </div>`;
+  }).join("");
+  const n = STOCK_PICK.size;
+  $("#stock-count").textContent = n ? `${n} of ${LINES.length}` : "none";
+}
+function toggleStock(id){
+  STOCK_PICK.has(id) ? STOCK_PICK.delete(id) : STOCK_PICK.add(id);
+  renderStockList();
+}
 function whoLabel(l, mem){
   if(l.who.length === mem.length) return `split ${mem.length} ways · everyone`;
   const names = l.who.map(w => (mem.find(m=>m.id===w)||{name:"?"}).name.split(" ")[0]);
@@ -1789,6 +1832,7 @@ function renderLines(){
     </div>`).join("");
   const n = LINES.filter(l=>l.split).length;
   $("#split-count").textContent = `${n} of ${LINES.length} shared`;
+  renderStockList();
   renderSummary();
 }
 function toggleExpand(id){ EXPANDED.has(id) ? EXPANDED.delete(id) : EXPANDED.add(id); renderLines(); }
@@ -1845,6 +1889,8 @@ function toggleWho(id,uid){
   if(!l.who.length){ l.split=false; }
   renderLines();
 }
+$("#btn-stock-all").onclick  = () => { LINES.forEach(l=>STOCK_PICK.add(l.id)); renderStockList(); };
+$("#btn-stock-none").onclick = () => { STOCK_PICK.clear(); renderStockList(); };
 $("#btn-all").onclick  = () => { LINES.forEach(l=>{l.split=true; l.who=H().members.map(m=>m.id)}); renderLines(); };
 $("#btn-none").onclick = () => { LINES.forEach(l=>l.split=false); renderLines(); };
 
@@ -1938,6 +1984,7 @@ $("#btn-discard").onclick = () => {
   LINES = []; RCPT = {tax:0, total:0, store:""}; EXPANDED.clear();
   $("#receipt-edit").classList.add("hide"); $("#receipt-intro").classList.remove("hide");
   $("#receipt-file").value = "";
+  STOCK_PICK.clear();
   toast("Discarded");
 };
 $("#btn-settle").onclick = () => {
@@ -1946,7 +1993,31 @@ $("#btn-settle").onclick = () => {
     store: (RCPT.store||"").trim(), splitMode: SPLIT_MODE, weights: {...activeWeights()},
     items:LINES.map(({name,price,split,who})=>({name,price,split,who})),
     owed:s.owed, total:s.grand, shared:s.shared });
-  save(); cloud("putTrip", cur, H().trips[0]); LINES=[]; RCPT={tax:0,total:0,store:""};
+  save(); cloud("putTrip", cur, H().trips[0]);
+
+  // stock the pantry with whatever was ticked
+  let added = 0, refilled = 0;
+  LINES.filter(l => STOCK_PICK.has(l.id)).forEach(l => {
+    const name = tidyName(l.name);
+    const have = pantryMatch(l.name);
+    if(have){
+      have.stock = "full"; refilled++;
+      cloud("putPantry", cur, have);
+    } else {
+      const it = { id:crypto.randomUUID(), name, brand:"", size:"", img:"", by:me.name,
+                   at:Date.now(), stock:"full", cat:guessCat(name), fromStore:(RCPT.store||"").trim() };
+      H().pantry.unshift(it); added++;
+      cloud("putPantry", cur, it);
+    }
+  });
+  if(added || refilled){
+    save();
+    const bits = [added?`${added} added`:null, refilled?`${refilled} restocked`:null].filter(Boolean);
+    setTimeout(()=>toast("Pantry: " + bits.join(", ")), 900);
+  }
+
+  STOCK_PICK.clear(); LINES=[]; RCPT={tax:0,total:0,store:""}; EXPANDED.clear();
+  const fi = $("#receipt-file"); if(fi) fi.value = "";   // else re-scanning the same photo does nothing
   $("#receipt-edit").classList.add("hide"); $("#receipt-intro").classList.remove("hide");
   go("settle"); toast("Trip saved — balances updated.");
 };
