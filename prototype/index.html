@@ -76,7 +76,7 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em}
    shrink-wraps to its content — which silently changed the page inset whenever
    a vibe swapped to a narrower typeface. width:100% pins it. */
 #app>main{flex:1 1 auto;width:100%;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding-bottom:var(--s-6)}
-#signin,#housegate,#waiting{height:100dvh;overflow-y:auto;overscroll-behavior:contain}
+#signin,#housegate,#waiting,#loading{height:100dvh;overflow-y:auto;overscroll-behavior:contain}
 .wrap{max-width:520px;margin:0 auto;padding:0 var(--inset)}
 
 
@@ -463,6 +463,14 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
   </div>
 </section>
 
+<!-- ══════════════ LOADING ══════════════ -->
+<section id="loading" class="center hide" data-ref="loading-screen">
+  <div class="hero" style="max-width:300px">
+    <div class="mark" style="background:var(--surface-2)"><svg class="spin" viewBox="0 0 48 48" aria-hidden="true"><g stroke="var(--label-3)" stroke-width="3.4" stroke-linecap="round"><line x1="24" y1="8" x2="24" y2="15" transform="rotate(0 24 24)" opacity="0.25"/><line x1="24" y1="8" x2="24" y2="15" transform="rotate(45 24 24)" opacity="0.36"/><line x1="24" y1="8" x2="24" y2="15" transform="rotate(90 24 24)" opacity="0.46"/><line x1="24" y1="8" x2="24" y2="15" transform="rotate(135 24 24)" opacity="0.57"/><line x1="24" y1="8" x2="24" y2="15" transform="rotate(180 24 24)" opacity="0.68"/><line x1="24" y1="8" x2="24" y2="15" transform="rotate(225 24 24)" opacity="0.79"/><line x1="24" y1="8" x2="24" y2="15" transform="rotate(270 24 24)" opacity="0.89"/><line x1="24" y1="8" x2="24" y2="15" transform="rotate(315 24 24)" opacity="1.00"/></g></svg></div>
+    <p class="sub">Finding your households…</p>
+  </div>
+</section>
+
 <!-- ══════════════ HOUSE GATE ══════════════ -->
 <section id="housegate" class="center hide" data-ref="house-gate">
   <div class="hero" style="max-width:360px;width:100%">
@@ -475,7 +483,8 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
     <input class="field" id="new-house" data-ref="new-house-input" placeholder="New house name — “Maple St”" maxlength="40">
     <p class="sub hide" id="name-err" data-ref="name-error" style="color:var(--negative);text-align:left;padding:0 var(--s-micro) var(--s-base)"></p>
     <button class="btn ghost" id="btn-create" data-ref="create-house-btn">Create a house</button>
-    <p class="sub" id="mine" style="margin-top:16px"></p>
+    <p class="sub" id="mine" style="margin-top:var(--s-2)"></p>
+    <button class="btn plain hide" id="btn-gate-cancel" data-ref="gate-cancel" style="margin-top:var(--s-base)">Cancel</button>
   </div>
 </section>
 
@@ -640,6 +649,15 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
           <div class="thumb"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7M5 10v10h14V10"/></svg></div>
           <div style="flex:1;min-width:0"><div class="iname">Household</div><div class="imeta" id="acct-house-sub">—</div></div>
           <svg class="chev" viewBox="0 0 8 14" aria-hidden="true"><path d="M1 1l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="itemrow" style="cursor:pointer" onclick="openGate()" data-ref="account-add-house">
+          <div class="thumb"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></div>
+          <div style="flex:1;min-width:0"><div class="iname">Join or create a household</div>
+            <div class="imeta">Add another house you share costs with</div></div>
+          <svg class="chev" viewBox="0 0 8 14" aria-hidden="true"><path d="M1 1l6 6-6 6"/></svg>
         </div>
       </div>
 
@@ -836,6 +854,7 @@ function signIn(p){
     houses = {};
     let landed = false;
     window.HC_SYNC.watchHouses(p.id, houses, err => {
+      housesLoaded = true;
       if(err) return;
       // Land in a house only on the FIRST population. Doing it on every
       // snapshot teleports you out of the join gate mid-keystroke whenever a
@@ -921,7 +940,7 @@ $("#btn-create").onclick = async () => {
   const member = {...me, venmo: me.venmo||""};
   houses[code] = { code, name, adminId: me.id, pantry:[], trips:[], pending:[], payments:[],
     members:[member] };
-  cur = code; save(); route();
+  cur = code; gateOpen = false; save(); route();
   toast("House created — code " + code);
   await cloud("createHouse", code, name, member);
 };
@@ -932,14 +951,14 @@ $("#btn-join").onclick = async () => {
   const code = $("#join-code").value.trim().toUpperCase();
   if(!code) return;
   if(houses[code] && houses[code].members.some(m=>m.id===me.id)){
-    cur = code; save(); route(); return toast("Welcome back");
+    cur = code; gateOpen = false; save(); route(); return toast("Welcome back");
   }
   if(CLOUD()){
     const info = await window.HC_SYNC.peekHouse(code);
     if(!info) return toast("No house with that code");
     await cloud("requestJoin", code, { id:me.id, name:me.name, email:me.email||"", pic:me.pic||"" });
     pendingCode = code; pendingInfo = { code, name:info.name, adminName:info.adminName };
-    DB.set("pending", pendingInfo); route(); watchRequest();
+    gateOpen = false; DB.set("pending", pendingInfo); route(); watchRequest();
     return toast("Request sent");
   }
   const h = houses[code];
@@ -985,6 +1004,8 @@ function nameError(msg){
 const isAdmin  = h => h && h.adminId === me?.id;
 const adminOf  = h => (h?.members || []).find(m => m.id === h.adminId) || {name:"the house admin"};
 let pendingCode = null;                       // house we're waiting on, if any
+let housesLoaded = !((window.HOUSECART_CONFIG||{}).USE_FIREBASE);   // server has answered
+let gateOpen = false;                          // gate opened deliberately from Account
 
 async function approveJoin(code, uid){
   const h = houses[code]; if(!isAdmin(h)) return toast("Only the house admin can approve");
@@ -1101,19 +1122,43 @@ function forgetHouseLocally(code){
   save(); closeSheet(); route();
 }
 
-async function deleteHouseFlow(){
+/* Compare loosely: iOS autocorrect loves to insert a space into a CamelCase
+   name, which made a letter-perfect typing attempt fail against a strict match. */
+const nameKey = v => String(v||"").toLowerCase().replace(/[\s\u00a0]+/g,"").trim();
+
+function deleteHouseFlow(){
   const h = H(); if(!isAdmin(h)) return toast("Only the house admin can delete it");
-  const typed = prompt(`This deletes “${h.name}” for everyone — pantry, receipts and balances.\n\nType the household name to confirm:`);
-  if(typed === null) return;
-  if(typed.trim().toLowerCase() !== h.name.trim().toLowerCase()) return toast("Name didn't match — nothing deleted");
-  const code = h.code;
-  toast("Deleting…");
-  if(CLOUD()){
-    try { await window.HC_SYNC.deleteHouse(code); }
-    catch(e){ console.warn(e); return toast(fbErr(e)); }
-  }
-  forgetHouseLocally(code);
-  toast("Household deleted");
+  sheet(`<h2>Delete “${esc(h.name)}”?</h2>
+    <p class="sub" style="margin-bottom:var(--s-2)">This removes the pantry, every receipt and every balance — for all ${h.members.length} of you. It cannot be undone.</p>
+    <p class="sub" style="margin-bottom:var(--s-micro)">Type <b style="color:var(--label)">${esc(h.name)}</b> to confirm:</p>
+    <input class="field" id="del-confirm" data-ref="delete-confirm-input"
+      autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false"
+      placeholder="${esc(h.name)}">
+    <p class="sub hide" id="del-hint" style="color:var(--negative)"></p>
+    <button class="btn" id="del-go" data-ref="delete-confirm-btn"
+      style="background:var(--negative);margin-top:var(--s-base)" disabled>Delete household</button>
+    <button class="btn ghost" style="margin-top:var(--s-base)" onclick="closeSheet()">Keep it</button>`);
+  const input = $("#del-confirm"), go = $("#del-go");
+  const check = () => {
+    const match = nameKey(input.value) === nameKey(h.name);
+    go.toggleAttribute("disabled", !match);
+    $("#del-hint").classList.toggle("hide", !input.value || match);
+    $("#del-hint").textContent = match ? "" : "Doesn't match yet";
+  };
+  input.oninput = check;
+  input.onkeydown = e => { if(e.key === "Enter" && !go.hasAttribute("disabled")) go.click(); };
+  setTimeout(()=>input.focus(), 80);
+  go.onclick = async () => {
+    if(nameKey(input.value) !== nameKey(h.name)) return;
+    const code = h.code;
+    go.textContent = "Deleting…"; go.setAttribute("disabled","");
+    if(CLOUD()){
+      try { await window.HC_SYNC.deleteHouse(code); }
+      catch(e){ console.warn(e); return toast(fbErr(e)); }
+    }
+    forgetHouseLocally(code);
+    toast("Household deleted");
+  };
 }
 
 async function leaveHouseFlow(){
@@ -1153,8 +1198,10 @@ function signOut(){
   if(CLOUD()) houses={};              // server is the truth; local mode keeps its only copy
   DB.set("pending", null); save(); closeSheet(); route(); toast("Signed out");
 }
-function switchHouse(c){ cur=c; save(); closeSheet(); render(); toast("Switched to "+houses[c].name); }
-function leaveToGate(){ cur=null; save(); route(); }
+function switchHouse(c){ cur=c; gateOpen=false; save(); closeSheet(); route(); render(); toast("Switched to "+houses[c].name); }
+function openGate(){ gateOpen = true; closeSheet(); route(); const i=$("#join-code"); if(i) i.value=""; }
+function closeGate(){ gateOpen = false; nameError(""); route(); }
+function leaveToGate(){ openGate(); }
 
 /* ═══════════ 3. PANTRY — stock, categories, have/need ═══════════ */
 /* Monochrome inline glyphs on the same 24-grid / 1.7px stroke as every other
@@ -2037,16 +2084,23 @@ function render(){
   bindSwipe($("#pantry-list"));
   renderApprovals(); renderSettle(); renderSpend();
 }
+$("#btn-gate-cancel").onclick = closeGate;
 $("#btn-recheck").onclick    = recheckRequest;
 $("#btn-cancel-req").onclick = cancelRequest;
 function route(){
   const signed  = !!me;
   const housed  = signed && cur && houses[cur] && houses[cur].members.some(m=>m.id===me.id);
   const waiting = signed && !housed && pendingCode && (houses[pendingCode] || pendingInfo);
+  // Don't conclude someone is house-less until the server has actually answered,
+  // otherwise a returning user gets flashed the "create a house" screen.
+  const settling = signed && !housed && !waiting && CLOUD() && !housesLoaded;
+  const gate     = signed && !housed && !waiting && !settling;
   $("#signin").classList.toggle("hide", signed);
+  $("#loading").classList.toggle("hide", !settling);
   $("#waiting").classList.toggle("hide", !waiting);
-  $("#housegate").classList.toggle("hide", !signed || !!housed || !!waiting);
-  $("#app").classList.toggle("hide", !housed);
+  $("#housegate").classList.toggle("hide", !(gate || gateOpen) || !!housed && !gateOpen);
+  $("#app").classList.toggle("hide", !housed || gateOpen);
+  $("#btn-gate-cancel").classList.toggle("hide", !(gateOpen && housed));
   if(waiting){
     const h = houses[pendingCode];
     const nm = (pendingInfo && pendingInfo.name) || (h && h.name) || pendingCode;
@@ -2056,7 +2110,7 @@ function route(){
       (CLOUD() ? " This screen updates by itself the moment they say yes." : " They'll see it next time they open HouseCart.");
     $("#btn-recheck").classList.toggle("hide", CLOUD());
   }
-  if(signed && !housed && !waiting){
+  if(gate || gateOpen){
     const mine = Object.values(houses).filter(h=>h.members.some(m=>m.id===me.id));
     $("#mine").innerHTML = mine.length ? "Your houses: " + mine.map(h=>`<a href="#" onclick="switchHouse('${h.code}');route();return false"><b>${esc(h.name)}</b> (${h.code})</a>`).join(", ") : "";
   }
@@ -2080,7 +2134,7 @@ applyVibe(currentVibe(), currentVariant());
 route();
 
 /* expose for inline handlers */
-Object.assign(window,{signIn,closeSheet,approveJoin,denyJoin,cancelRequest,recheckRequest,isAdmin,addManual,delItem,toggleLine,toggleWho,renameLine,toggleExpand,signOut,confirmSignOut,setPrice,nameError,setVibe,setVariant,renderAccount,swipeDelete,deleteHouseFlow,leaveHouseFlow,removeHousemate,renderHouseDanger,switchHouse,leaveToGate,recordPayment,tripDetail,onBarcode,$,cycleStock,restock,itemSheet,setWeight,balanceWeights});
+Object.assign(window,{signIn,closeSheet,approveJoin,denyJoin,cancelRequest,recheckRequest,isAdmin,addManual,delItem,toggleLine,toggleWho,renameLine,toggleExpand,signOut,confirmSignOut,setPrice,nameError,openGate,closeGate,setVibe,setVariant,renderAccount,swipeDelete,deleteHouseFlow,leaveHouseFlow,removeHousemate,renderHouseDanger,switchHouse,leaveToGate,recordPayment,tripDetail,onBarcode,$,cycleStock,restock,itemSheet,setWeight,balanceWeights});
 </script>
 </body>
 </html>

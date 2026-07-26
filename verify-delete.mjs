@@ -29,14 +29,15 @@ ok(await p.evaluate(()=>!H().members.some(m=>m.id==='u2')), 'the housemate is re
 ok(await p.evaluate(()=>H().trips.length===0 || true), 'receipts they were part of are untouched');
 
 console.log('\n=== deleting requires typing the name ===');
-p.once('dialog', d=>d.accept('wrong name'));
 await p.click('[data-ref="delete-house-btn"]'); await p.waitForTimeout(400);
-ok(await p.evaluate(()=>!!H()), 'a mistyped name deletes nothing');
-p.once('dialog', d=>d.dismiss());
-await p.click('[data-ref="delete-house-btn"]'); await p.waitForTimeout(400);
-ok(await p.evaluate(()=>!!H()), 'cancelling deletes nothing');
-p.once('dialog', d=>d.accept('brooklyngals'));
-await p.click('[data-ref="delete-house-btn"]'); await p.waitForTimeout(600);
+await p.fill('[data-ref="delete-confirm-input"]','wrong name'); await p.waitForTimeout(200);
+ok(await p.evaluate(()=>document.querySelector('[data-ref="delete-confirm-btn"]').hasAttribute('disabled')), 'a mistyped name cannot be submitted');
+await p.click('.sheet .btn.ghost'); await p.waitForTimeout(300);
+ok(await p.evaluate(()=>!!H()), 'backing out deletes nothing');
+await p.click('[data-ref="house-switcher"]'); await p.waitForTimeout(300);
+await p.click('[data-ref="delete-house-btn"]'); await p.waitForTimeout(300);
+await p.fill('[data-ref="delete-confirm-input"]','brooklyngals'); await p.waitForTimeout(200);
+await p.click('[data-ref="delete-confirm-btn"]'); await p.waitForTimeout(600);
 ok(await p.evaluate(()=>!houses['BrooklynGals'] && Object.keys(houses).length===0), 'typing the name (case-insensitive) deletes it');
 ok(await p.isVisible('[data-ref="house-gate"]'), 'and you land back on the join/create screen');
 
