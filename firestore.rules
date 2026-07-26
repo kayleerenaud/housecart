@@ -33,7 +33,10 @@ service cloud.firestore {
         && (request.resource.data.memberIds == resource.data.memberIds
             || request.auth.uid == resource.data.adminId
             || request.resource.data.memberIds == resource.data.memberIds.removeAll([request.auth.uid]));
-      allow delete: if isAdmin(code);
+      /* The creator may delete it, and so may anyone clearing out a household
+         with no members left — an empty house belongs to nobody, and without
+         this an abandoned one would keep its name reserved forever. */
+      allow delete: if isAdmin(code) || resource.data.memberIds.size() == 0;
 
       match /joinRequests/{uid} {
         allow create: if signedIn() && uid == request.auth.uid;

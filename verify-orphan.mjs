@@ -45,7 +45,7 @@ console.log('   listed:', listed.join(' | '));
 ok(listed.length===2, 'both households appear under Account');
 ok(listed.some(t=>t.includes('Lake House')) && listed.some(t=>t.includes('BrooklynGals')), 'including one you did not create');
 const meta = await p.evaluate(()=>[...document.querySelectorAll('[data-ref="account-houses"] .imeta')].map(e=>e.textContent));
-ok(meta.some(t=>/you admin it/.test(t)), 'it says which ones you admin');
+ok(meta.some(t=>/you created it/.test(t)), 'it says which ones you created');
 ok(meta.every(t=>/[A-Z]+\d{4}/.test(t)), 'and shows each code so you can share it');
 
 console.log('\n=== auto sign-in ===');

@@ -646,15 +646,7 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
 
       <div class="sechead">Your households</div>
       <div class="card" id="acct-houses" data-ref="account-houses"></div>
-
-      <div class="sechead">Current household</div>
-      <div class="card">
-        <div class="itemrow" style="cursor:pointer" onclick="$('#house-switch').click()">
-          <div class="thumb"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7M5 10v10h14V10"/></svg></div>
-          <div style="flex:1;min-width:0"><div class="iname">Household</div><div class="imeta" id="acct-house-sub">—</div></div>
-          <svg class="chev" viewBox="0 0 8 14" aria-hidden="true"><path d="M1 1l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-        </div>
-      </div>
+      <div class="secfoot">Tap one to switch to it, or to rename, invite, leave or delete it.</div>
 
       <div class="card">
         <div class="itemrow" style="cursor:pointer" onclick="openGate()" data-ref="account-add-house">
@@ -663,6 +655,12 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
             <div class="imeta">Add another house you share costs with</div></div>
           <svg class="chev" viewBox="0 0 8 14" aria-hidden="true"><path d="M1 1l6 6-6 6"/></svg>
         </div>
+      </div>
+
+      <div class="sechead">Start over</div>
+      <div class="card pad">
+        <p class="sub" style="margin-bottom:var(--s-base)">Deletes every household you created, leaves any you only joined, and frees up all their names. Your account stays.</p>
+        <button class="btn ghost" style="color:var(--negative)" onclick="resetFlow()" data-ref="reset-btn">Reset all my households</button>
       </div>
 
       <button class="btn ghost" style="color:var(--negative);background:transparent" onclick="confirmSignOut()">Sign out</button>
@@ -1115,6 +1113,59 @@ $("#house-switch").onclick = () => {
     else { try{ await navigator.clipboard.writeText(text + " " + location.href); toast("Invite copied"); }catch(e){ prompt("Send this:", text); } }
   };
 };
+/* A clean slate. Deletes what this account owns, leaves what it doesn't, and
+   releases every name entry it can — including ones orphaned by earlier bugs. */
+function resetFlow(){
+  sheet(`<h2>Reset all my households?</h2>
+    <p class="sub" style="margin-bottom:var(--s-2)">This deletes every household you created — pantries, receipts, balances — and leaves any you only joined. Names are freed up so you can reuse them. Your account and profile stay.</p>
+    <p class="sub" style="margin-bottom:var(--s-micro)">Type <b style="color:var(--label)">RESET</b> to confirm:</p>
+    <input class="field" id="rs-in" data-ref="reset-confirm-input" autocapitalize="characters" autocorrect="off" spellcheck="false" placeholder="RESET">
+    <div id="rs-log" class="sub hide" style="padding-top:var(--s-base)"></div>
+    <button class="btn" id="rs-go" data-ref="reset-confirm-btn" style="background:var(--negative);margin-top:var(--s-base)" disabled>Reset everything</button>
+    <button class="btn ghost" style="margin-top:var(--s-base)" onclick="closeSheet()">Keep my households</button>`);
+  const inp = $("#rs-in"), go = $("#rs-go"), log = $("#rs-log");
+  inp.oninput = () => go.toggleAttribute("disabled", nameKey(inp.value) !== "reset");
+  setTimeout(()=>inp.focus(), 80);
+  go.onclick = async () => {
+    go.setAttribute("disabled",""); go.textContent = "Resetting…";
+    log.classList.remove("hide");
+    const say = m => { log.innerHTML += esc(m) + "<br>"; };
+    let deleted=0, left=0, freed=0, stuck=[];
+    for(const h of Object.values(houses).slice()){
+      const mine = h.adminId === me.id;
+      try{
+        if(mine){
+          if(CLOUD()) await window.HC_SYNC.deleteHouse(h.code);
+          deleted++; say(`Deleted ${h.name}`);
+        } else {
+          if(CLOUD()){
+            await window.HC_SYNC.removeMember(h.code, me.id);
+            // if that emptied it, clear the shell too so its name is freed
+            try { await window.HC_SYNC.deleteHouse(h.code); } catch(e){}
+          }
+          left++; say(`Left ${h.name}`);
+        }
+      }catch(e){ stuck.push(`${h.name} (${e.code||e.message})`); say(`Couldn't clear ${h.name}`); }
+      delete houses[h.code];
+    }
+    if(CLOUD()){
+      try{
+        const rows = await window.HC_SYNC.myHouseCodes(me.id);
+        for(const r of rows){
+          try{ await window.HC_SYNC.releaseCode(r.code); freed++; say(`Freed the name “${r.name}”`); }
+          catch(e){ stuck.push(`name ${r.name}`); }
+        }
+      }catch(e){}
+    }
+    houses = {}; cur = null; pendingCode = null; pendingInfo = null;
+    DB.set("houses", {}); DB.set("cur", null); DB.set("pending", null);
+    save();
+    say(`Done — ${deleted} deleted, ${left} left, ${freed} name${freed===1?"":"s"} freed.`);
+    if(stuck.length) say(`Still stuck: ${stuck.join(", ")}`);
+    setTimeout(()=>{ closeSheet(); openGate(); toast("Clean slate"); }, stuck.length ? 4000 : 1400);
+  };
+}
+
 function confirmSignOut(){
   const local = !CLOUD();
   if(confirm(local
@@ -1128,10 +1179,10 @@ function renderMyHouses(){
   const box = $("#acct-houses"); if(!box) return;
   const mine = Object.values(houses).filter(h => (h.members||[]).some(m => m.id === me.id));
   box.innerHTML = mine.length ? mine.map(h=>`
-    <div class="itemrow" style="cursor:pointer" onclick="switchHouse('${h.code}')">
+    <div class="itemrow" style="cursor:pointer" onclick="openHouse('${h.code}')">
       <div class="thumb"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7M5 10v10h14V10"/></svg></div>
       <div style="flex:1;min-width:0"><div class="iname">${esc(h.name)}${h.code===cur?' <span class="tag">current</span>':''}</div>
-        <div class="imeta">${(h.members||[]).length} housemate${(h.members||[]).length===1?"":"s"} · ${h.code}${isAdmin(h)?" · you admin it":""}</div></div>
+        <div class="imeta">${h.code} · ${(h.members||[]).length} housemate${(h.members||[]).length===1?"":"s"} · ${isAdmin(h)?"you created it":"you're a member"}</div></div>
       <svg class="chev" viewBox="0 0 8 14" aria-hidden="true"><path d="M1 1l6 6-6 6"/></svg>
     </div>`).join("") : `<div class="empty" style="padding:var(--s-3)">No households yet.</div>`;
   if(CLOUD()) window.HC_SYNC.myHouseCodes(me.id).then(rows=>{
@@ -1291,6 +1342,9 @@ function signOut(){
   if(CLOUD()) houses={};              // server is the truth; local mode keeps its only copy
   DB.set("pending", null); save(); closeSheet(); route(); toast("Signed out");
 }
+/* Switch to a house and immediately show its settings, so "delete this one"
+   is never ambiguous about which one. */
+function openHouse(c){ cur=c; gateOpen=false; save(); render(); $("#house-switch").click(); }
 function switchHouse(c){ cur=c; gateOpen=false; save(); closeSheet(); route(); render(); toast("Switched to "+houses[c].name); }
 function openGate(){ gateOpen = true; closeSheet(); route(); const i=$("#join-code"); if(i) i.value=""; }
 function closeGate(){ gateOpen = false; nameError(""); route(); }
@@ -1985,10 +2039,7 @@ function renderAccount(){
   $("#acct-email").textContent = me.email || "";
   const mine = (H() && H().members.find(m=>m.id===me.id)) || me;
   $("#acct-venmo").value = mine.venmo || "";
-  if(H()){
-    $("#acct-house-sub").textContent =
-      `${H().name} · ${H().members.length} housemate${H().members.length===1?"":"s"} · code ${H().code}`;
-  }
+
   renderMyHouses();
   const cv = currentVibe(), cvar = currentVariant(), d = vibeDef(cv);
   $("#vibes").innerHTML = VIBES.map(v=>`
@@ -2236,7 +2287,7 @@ applyVibe(currentVibe(), currentVariant());
 route();
 
 /* expose for inline handlers */
-Object.assign(window,{signIn,closeSheet,approveJoin,denyJoin,cancelRequest,recheckRequest,isAdmin,addManual,delItem,toggleLine,toggleWho,renameLine,toggleExpand,signOut,confirmSignOut,setPrice,nameError,openGate,closeGate,releaseName,renderMyHouses,setVibe,setVariant,renderAccount,swipeDelete,deleteHouseFlow,leaveHouseFlow,removeHousemate,renderHouseDanger,switchHouse,leaveToGate,recordPayment,tripDetail,onBarcode,$,cycleStock,restock,itemSheet,setWeight,balanceWeights});
+Object.assign(window,{signIn,closeSheet,approveJoin,denyJoin,cancelRequest,recheckRequest,isAdmin,addManual,delItem,toggleLine,toggleWho,renameLine,toggleExpand,signOut,confirmSignOut,setPrice,nameError,openGate,closeGate,releaseName,renderMyHouses,resetFlow,openHouse,setVibe,setVariant,renderAccount,swipeDelete,deleteHouseFlow,leaveHouseFlow,removeHousemate,renderHouseDanger,switchHouse,leaveToGate,recordPayment,tripDetail,onBarcode,$,cycleStock,restock,itemSheet,setWeight,balanceWeights});
 </script>
 </body>
 </html>

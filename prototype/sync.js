@@ -205,16 +205,21 @@ const codeTaken = code => getDoc(doc(db,"houseCodes",code)).then(d => d.exists()
    everyone. Subcollections don't cascade in Firestore, so they're cleared
    explicitly before the house document and its code entry. */
 async function deleteHouse(code){
-  // ORDER MATTERS. Every permission check for a house's bits reads the house
-  // document, so it has to be the LAST thing deleted. Removing it first orphans
-  // the name entry — the rules then refuse to delete it and the household name
-  // stays registered forever.
-  await deleteDoc(doc(db,"houseCodes",code));
+  /* ORDER MATTERS. Permission checks for a house's contents read the house
+     document, so it must be deleted LAST. The name entry is attempted FIRST
+     (the admin can delete it while the house exists) and again at the END (once
+     the house is gone, anyone may clear an entry pointing at nothing). Either
+     route works, so a name can't be stranded whichever way we came in. */
+  let nameCleared = false;
+  try { await deleteDoc(doc(db,"houseCodes",code)); nameCleared = true; } catch(e){}
   for(const sub of ["pantry","trips","payments","joinRequests"]){
-    const snap = await getDocs(collection(db,"houses",code,sub));
-    await Promise.all(snap.docs.map(d => deleteDoc(d.ref)));
+    try {
+      const snap = await getDocs(collection(db,"houses",code,sub));
+      await Promise.all(snap.docs.map(d => deleteDoc(d.ref)));
+    } catch(e){ /* nothing readable there, or not permitted — keep going */ }
   }
   await deleteDoc(doc(db,"houses",code));
+  if(!nameCleared) await deleteDoc(doc(db,"houseCodes",code));
 }
 
 /* Used both by an admin removing someone and by a member letting themselves
