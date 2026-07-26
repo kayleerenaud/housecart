@@ -13,7 +13,9 @@
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
 import {
-  getAuth, GoogleAuthProvider, signInWithCredential, onAuthStateChanged, signOut
+  getAuth, GoogleAuthProvider, signInWithCredential, signInWithPopup,
+  signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut,
+  browserLocalPersistence, setPersistence
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
 import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
@@ -34,14 +36,48 @@ const clean = o => JSON.parse(JSON.stringify(o));   // drop undefined before wri
 
 /* ── auth ───────────────────────────────────────────────────────────────── */
 
-/* Exchange the ID token the Google button already produced for a Firebase
-   session, so the OAuth client ID Kaylee set up earlier carries straight over
-   and nobody signs in twice. */
+const shape = u => ({ id:u.uid, name:u.displayName || u.email, email:u.email,
+                      pic:u.photoURL || "", venmo:"" });
+
+/* Keep the session on the device so a returning user is signed in silently. */
+setPersistence(auth, browserLocalPersistence).catch(()=>{});
+
+/* Firebase drives the whole handshake, the way Supabase does for Wanderlines:
+   one button, Google's own page, back to the app signed in.
+
+   Popup first — per Firebase's own guidance it is the option that works across
+   every modern browser without extra setup, because it doesn't depend on
+   cross-origin storage the way the redirect flow does. If the popup is blocked
+   (common on mobile), fall back to a full-page redirect. */
+async function signInWithGoogle(){
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: "select_account" });
+  try {
+    const { user } = await signInWithPopup(auth, provider);
+    return shape(user);
+  } catch(e){
+    const c = e && e.code || "";
+    if(/popup-blocked|popup-closed-by-user|cancelled-popup-request|operation-not-supported/.test(c)){
+      if(/popup-closed-by-user|cancelled-popup-request/.test(c)) throw e;   // they backed out
+      await signInWithRedirect(auth, provider);        // navigates away; resumes below
+      return null;
+    }
+    throw e;
+  }
+}
+
+/* Called on every load: if we just came back from the redirect flow, this
+   resolves with the user. */
+async function completeRedirect(){
+  try { const r = await getRedirectResult(auth); return r && r.user ? shape(r.user) : null; }
+  catch(e){ console.warn("redirect result", e.code); return null; }
+}
+
+/* Still used if a Google ID token arrives from somewhere else. */
 async function signInWithGoogleIdToken(idToken){
   const cred = GoogleAuthProvider.credential(idToken);
   const { user } = await signInWithCredential(auth, cred);
-  return { id:user.uid, name:user.displayName || user.email, email:user.email,
-           pic:user.photoURL || "", venmo:"" };
+  return shape(user);
 }
 
 function onUser(cb){
@@ -236,7 +272,7 @@ async function removeMember(code, uid){
 }
 
 window.HC_SYNC = {
-  ready: true, signInWithGoogleIdToken, onUser, signOutFirebase: () => signOut(auth),
+  ready: true, signInWithGoogle, completeRedirect, signInWithGoogleIdToken, onUser, signOutFirebase: () => signOut(auth),
   watchHouses, watchMyRequest, peekHouse, createHouse, requestJoin, cancelJoin,
   approveJoin, denyJoin, setMembers, putPantry, dropPantry, putTrip, putPayment,
   codeTaken, nameTaken, myHouseCodes, releaseCode, renameHouse, ensureNameIndex, deleteHouse, removeMember, stop

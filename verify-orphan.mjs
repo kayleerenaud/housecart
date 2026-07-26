@@ -52,7 +52,8 @@ console.log('\n=== auto sign-in ===');
 const cfg = await p.evaluate(()=>({resolvedFlagExists: typeof authResolved !== 'undefined'}));
 ok(cfg.resolvedFlagExists, 'the app tracks whether the session has resolved');
 const html = await (await fetch(B.replace('?local=1',''))).text();
-ok(/auto_select:\s*true/.test(html), 'Google One Tap is set to sign a returning user in automatically');
+ok(/setPersistence\(auth, browserLocalPersistence\)/.test(await (await fetch(B.replace(/index\.html.*/,'')+'sync.js')).text()),
+   'the Firebase session is persisted on the device, so a returning user is signed in without tapping');
 ok(/Signing you back in/.test(html), 'and a restoring state exists so the sign-in screen is not flashed');
 
 console.log(fails?`\n${fails} FAILED`:'\nALL ORPHAN CHECKS PASSED');

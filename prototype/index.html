@@ -21,7 +21,6 @@
 </script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
-<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 /* ══════════════════════════════════════════════════════════════════════════
    HouseCart — grouped-surface design system.
@@ -459,7 +458,10 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
     <div class="mark" data-ref="app-cover"><svg viewBox="0 0 48 48" aria-hidden="true"><g fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 16h30l-2.6 24a3 3 0 0 1-3 2.6H14.6a3 3 0 0 1-3-2.6z"/><path d="M17 16v-3a7 7 0 0 1 14 0v3"/><path d="M9 24h30"/></g></svg></div>
     <h1>HouseCart</h1>
     <p class="sub" style="margin:8px 0 26px;font-size:15px;letter-spacing:-.2px">Split groceries with your house.</p>
-    <div id="gsi-btn" data-ref="google-signin" style="display:flex;justify-content:center;min-height:44px"></div>
+    <button class="btn" id="gsi-btn" data-ref="google-signin" style="background:#fff;color:#1f1f1f;border:1px solid rgba(0,0,0,.14);gap:12px">
+      <svg width="19" height="19" viewBox="0 0 48 48" aria-hidden="true"><path fill="#4285F4" d="M45 24c0-1.6-.1-2.7-.4-3.9H24v7.1h12c-.2 1.8-1.5 4.6-4.4 6.5l6.7 5.2C42.2 35.3 45 30.1 45 24z"/><path fill="#34A853" d="M24 46c5.9 0 10.8-1.9 14.4-5.3l-6.9-5.3c-1.8 1.3-4.3 2.2-7.5 2.2-5.7 0-10.6-3.8-12.3-9l-7.1 5.5C8.2 41.1 15.5 46 24 46z"/><path fill="#FBBC05" d="M11.7 28.6A13.5 13.5 0 0 1 11 24c0-1.6.3-3.2.7-4.6l-7.1-5.6A22 22 0 0 0 2 24c0 3.6.9 6.9 2.4 10.1l7.3-5.5z"/><path fill="#EA4335" d="M24 10.4c4 0 6.8 1.7 8.3 3.2l6.1-6C34.7 4.1 29.9 2 24 2 15.5 2 8.2 6.9 4.6 14l7.1 5.5c1.7-5.3 6.6-9.1 12.3-9.1z"/></svg>
+      Continue with Google
+    </button>
     <p class="sub" id="gsi-note" style="margin-top:14px;font-size:11.5px"></p>
 
     <!-- Google refuses OAuth inside an app's built-in browser, so the button
@@ -478,9 +480,9 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
       <div class="card" style="margin:0">
         <div class="row" style="margin-bottom:6px"><span class="tag" style="background:#fbeee6;color:var(--warning)">setup needed</span></div>
         <h2 style="font-size:14px">Add your Google client ID</h2>
-        <p class="sub" style="margin:4px 0 10px">Sign-in is off until <code>config.js</code> has an OAuth Web client ID. Create one at
-          <b>console.cloud.google.com → APIs &amp; Services → Credentials</b>, then paste it into <code>config.js</code> and push.</p>
-        <p class="sub" style="margin-bottom:4px"><b>Authorized JavaScript origins</b> must contain exactly these:</p>
+        <p class="sub" style="margin:var(--s-micro) 0 var(--s-2)">Sign-in needs a Firebase config in <code>config.js</code>, and Google enabled under
+          <b>Firebase → Authentication → Sign-in method</b>.</p>
+        <p class="sub" style="margin-bottom:var(--s-micro)"><b>Authorized domains</b> (Firebase → Authentication → Settings) must include:</p>
         <div id="origins" style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;background:#f3f0e9;border:1px solid var(--separator);border-radius:9px;padding:9px 10px;word-break:break-all;line-height:1.7"></div>
         <button class="btn ghost sm" id="btn-copy-origin" style="margin-top:12px">Copy this origin</button>
       </div>
@@ -802,38 +804,6 @@ const save = () => { DB.set("houses", houses); DB.set("cur", cur); DB.set("me", 
 
 /* ═══════════ 1. SIGN IN — Google Identity Services, for real ═══════════ */
 
-/* base64url JWT payload, unicode-safe (names/emails can be non-ASCII) */
-function jwtPayload(token){
-  const seg = token.split(".")[1].replace(/-/g,"+").replace(/_/g,"/");
-  const pad = seg + "=".repeat((4 - seg.length % 4) % 4);
-  const json = decodeURIComponent(atob(pad).split("")
-    .map(c => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2)).join(""));
-  return JSON.parse(json);
-}
-
-async function onCredential(res){
-  let p;
-  try { p = jwtPayload(res.credential); }
-  catch(e){ $("#gsi-note").textContent = "Couldn't read that Google response — try again."; return; }
-  const local = { id:p.sub, name:p.name || p.given_name || p.email, email:p.email,
-                  pic:p.picture || "", googlePic:p.picture || "", venmo:"" };
-  if(CLOUD()){
-    $("#gsi-note").textContent = "Signing you in…";
-    try {
-      const u = await window.HC_SYNC.signInWithGoogleIdToken(res.credential);
-      return signIn(u);            // uid comes from Firebase, not the raw Google sub
-    } catch(e){
-      console.warn("firebase auth", e);
-      const c = (e && e.code) || "";
-      $("#gsi-note").innerHTML = c.includes("operation-not-allowed")
-        ? "Google sign-in isn't switched on in Firebase yet — <b>Authentication → Sign-in method → Google → Enable</b>."
-        : "Sign-in failed: " + (e.message || c);
-      return;
-    }
-  }
-  signIn(local);
-}
-
 function showSetupHelp(){
   $("#gsi-setup").classList.remove("hide");
   const origin = location.origin;
@@ -874,58 +844,52 @@ function showWebviewHelp(){
   };
 }
 
-let gsiReady = false, oneTapShown = false;
-/* Only ever offered to someone who is genuinely signed out. */
-function oneTap(){
-  if(!gsiReady || oneTapShown || me) return;
-  oneTapShown = true;
-  try { google.accounts.id.prompt(); } catch(e){}
-}
-function dismissOneTap(){
-  try { google.accounts.id.cancel(); } catch(e){}
-  oneTapShown = true;        // don't re-offer this session
+let signingIn = false;
+function authNote(msg){ const n = $("#gsi-note"); if(n) n.innerHTML = msg; }
+
+/* One button. Google's own page. Back here signed in. No embedded widget that
+   can silently fail to render, and no One Tap overlay to float over the app. */
+async function startSignIn(){
+  if(signingIn || !CLOUD()) return;
+  signingIn = true;
+  const btn = $("#gsi-btn"), label = btn.innerHTML;
+  btn.setAttribute("disabled",""); btn.innerHTML = "Opening Google…";
+  authNote("");
+  try {
+    const u = await window.HC_SYNC.signInWithGoogle();
+    if(u) signIn(u);                       // popup path: we're in
+    // otherwise the page is navigating to Google; completeRedirect picks it up
+  } catch(e){
+    const c = (e && e.code) || "";
+    console.warn("sign-in", e);
+    if(/popup-closed-by-user|cancelled-popup-request/.test(c)) authNote("Sign-in cancelled.");
+    else if(/operation-not-allowed/.test(c)) authNote("Google sign-in isn't switched on in Firebase yet — <b>Authentication → Sign-in method → Google → Enable</b>.");
+    else if(/unauthorized-domain/.test(c)) authNote(`This domain isn't authorised in Firebase yet — add <b>${location.hostname}</b> under Authentication → Settings → Authorized domains.`);
+    else if(/network/.test(c)) authNote("No connection — try again.");
+    else authNote("Couldn't sign in: " + (e.message || c));
+  } finally {
+    signingIn = false;
+    btn.removeAttribute("disabled"); btn.innerHTML = label;
+  }
 }
 
-let gsiTries = 0;
+let authWired = false;
 function initAuth(){
-  if(!GOOGLE_CLIENT_ID){ showSetupHelp(); return; }
+  if(authWired) return;
+  const wantsCloud = !!(CFG.USE_FIREBASE);
+  // The Firebase module loads asynchronously. Until it lands, don't conclude
+  // anything — hc-sync-ready calls back in.
+  if(wantsCloud && !CLOUD()) return;
+  authWired = true;
+  if(!wantsCloud){ authNote("Cloud sync is off (<code>?local=1</code>) — nothing to sign into."); return; }
+  if(!(CFG.FIREBASE && CFG.FIREBASE.apiKey)){ showSetupHelp(); return; }
   if(inAppBrowser()){ showWebviewHelp(); return; }
-
-  // the GIS script is async — wait for it rather than racing it
-  if(!window.google?.accounts?.id){
-    if(++gsiTries > 40){                                  // ~8s
-      $("#gsi-note").innerHTML = "Google's sign-in script didn't load. Check your connection or any content blockers, then reload.";
-      return;
-    }
-    return setTimeout(initAuth, 200);
-  }
-
-  try{
-    google.accounts.id.initialize({
-      client_id: GOOGLE_CLIENT_ID,
-      callback: onCredential,
-      auto_select: true,          // a returning user shouldn't have to tap again
-      cancel_on_tap_outside: true,
-      use_fedcm_for_prompt: true
-    });
-    google.accounts.id.renderButton($("#gsi-btn"),
-      { theme:"outline", size:"large", shape:"pill", text:"continue_with", width:300 });
-    gsiReady = true;
-    setTimeout(()=>{
-      if(!me && $("#gsi-btn") && $("#gsi-btn").children.length === 0) showWebviewHelp();
-    }, 5000);
-    // Do NOT prompt yet. In cloud mode the stored Firebase session may already
-    // be signing this person in, and One Tap would then float over an app they
-    // are demonstrably already inside. offerOneTap() is called once we know.
-    if(!CLOUD() && !me) oneTap();
-    $("#gsi-note").innerHTML = "We only ever see your name, email and profile photo.";
-  }catch(e){
-    $("#gsi-note").innerHTML = `Google sign-in failed to start: ${e.message}`;
-  }
+  $("#gsi-btn").onclick = startSignIn;
+  authNote("We only ever see your name, email and profile photo.");
 }
+
 function signIn(p){
   me = p; save(); applyVibe(currentVibe(), currentVariant());
-  dismissOneTap();
   if(CLOUD()){
     houses = {};
     let landed = false;
@@ -2418,10 +2382,10 @@ function route(){
 function bootCloud(){
   if(!CLOUD() || cloudBooted) return;      // both the event and onload fire
   cloudBooted = true;
+  // if we're arriving back from Google's page, finish the handshake
+  window.HC_SYNC.completeRedirect().then(u => { if(u && !me) signIn(u); }).catch(()=>{});
   window.HC_SYNC.onUser(u => {
     authResolved = true;
-    if(!u) setTimeout(oneTap, 250);      // genuinely signed out: now it's useful
-    else dismissOneTap();
     // On reload the restored session has the SAME uid, so this must still
     // (re)attach listeners — otherwise the app silently runs on stale cache.
     if(u) signIn({ ...u, googlePic: u.pic || (me && me.googlePic) || "",
@@ -2430,10 +2394,10 @@ function bootCloud(){
   });
 }
 let cloudBooted = false;
-window.addEventListener("hc-sync-ready", bootCloud);
+window.addEventListener("hc-sync-ready", () => { bootCloud(); initAuth(); });
 window.onload = () => {
   initAuth(); bootCloud();
-  setTimeout(()=>{ if(!authResolved){ authResolved = true; route(); if(!me) oneTap(); } }, 4000);
+  setTimeout(()=>{ if(!authResolved){ authResolved = true; route(); } }, 4000);
 };
 applyVibe(currentVibe(), currentVariant());
 route();
