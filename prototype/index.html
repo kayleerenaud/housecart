@@ -314,7 +314,14 @@ h1,h2,h3,.ltitle,.bignum,.sheet h2,.stat .n{font-family:var(--font-display,inher
   font-family:var(--font-ui,inherit);font-size:17px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;
   gap:8px;width:100%;transition:opacity .15s;border:var(--btn-border,0);box-shadow:var(--btn-shadow,none);letter-spacing:var(--btn-track,inherit)}
 main > .btn, main > section > .btn{margin-bottom:var(--s-4)}
+/* Stacked buttons get vertical breathing room. Buttons sitting side by side in a
+   .row must NOT — the row's gap handles that, and a stray margin-top there knocks
+   them out of alignment with each other. */
 .btn + .btn{margin-top:var(--s-base)}
+.row > .btn + .btn, .row > .btn + label.btn, .btn3 > .btn{margin-top:0}
+/* three equal controls, so they line up exactly rather than by eye */
+.btn3{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s-base)}
+.btn3 > .btn{width:100%;padding-left:var(--s-base);padding-right:var(--s-base)}
 .btn:active{opacity:.72}
 .btn.ghost{background:var(--tint-soft);color:var(--tint)}
 .btn.venmo{background:var(--tint)}
@@ -628,11 +635,11 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
     <section id="tab-account" class="hide" data-ref="account-tab">
       <div class="card pad" style="text-align:center">
         <button class="pickpic" id="pp" data-ref="profile-pic" aria-label="Change profile picture"></button>
-        <div class="row" style="justify-content:center;margin-top:14px;gap:8px">
+        <div class="btn3" style="margin-top:var(--s-3)">
           <label class="btn ghost sm" data-ref="pic-upload" style="white-space:nowrap">Upload
             <input type="file" id="pic-file" accept="image/*" class="hide"></label>
           <button class="btn ghost sm" id="pic-google" style="white-space:nowrap">Google</button>
-          <button class="btn plain" id="pic-clear" style="width:auto;white-space:nowrap">Remove</button>
+          <button class="btn ghost sm" id="pic-clear" style="white-space:nowrap;color:var(--negative)">Remove</button>
         </div>
         <div id="acct-name" style="font-size:22px;font-weight:700;letter-spacing:-.3px;margin-top:14px"></div>
         <div class="sub" id="acct-email"></div>

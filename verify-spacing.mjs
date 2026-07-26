@@ -98,6 +98,31 @@ const small = await p.evaluate(()=>{
 small.forEach(x=>console.log('   under:', x));
 ok(small.length===0, 'every visible control clears 44x44');
 
+console.log('\n=== side-by-side controls share a centre line ===');
+{
+  const bad = [];
+  for(const tab of ['pantry','receipt','settle','spend','account']){
+    await p.evaluate(t=>go(t), tab); await p.waitForTimeout(300);
+    const rows = await p.evaluate(t=>{
+      const out=[];
+      document.querySelectorAll('#app .row, #app .btn3').forEach(row=>{
+        if(!row.offsetParent) return;
+        const kids=[...row.children].filter(el=>el.getClientRects().length && el.tagName!=='INPUT'
+                    && getComputedStyle(el).position!=='absolute');
+        if(kids.length < 2) return;
+        const mids = kids.map(el=>{const r=el.getBoundingClientRect(); return +(r.top+r.height/2).toFixed(1);});
+        const spread = Math.max(...mids) - Math.min(...mids);
+        if(spread > 1.5) out.push(`${t}: [${kids.map(k=>k.className||k.tagName).join(', ')}] centres differ by ${spread.toFixed(1)}px`);
+      });
+      return out;
+    }, tab);
+    bad.push(...rows);
+  }
+  bad.forEach(x=>console.log('   MISALIGNED', x));
+  ok(bad.length===0, 'every horizontal group of controls shares one centre line');
+  await p.evaluate(()=>go('pantry')); await p.waitForTimeout(250);
+}
+
 console.log('\n=== proportional hierarchy ===');
 const h = await p.evaluate(()=>{
   const sec = parseFloat(getComputedStyle(document.querySelector('#app>main .card')).marginBottom);
