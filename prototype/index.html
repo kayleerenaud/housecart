@@ -504,6 +504,7 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
     <div class="mark"><svg viewBox="0 0 48 48" aria-hidden="true"><g fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 22 24 8l17 14"/><path d="M11 20v20h26V20"/><path d="M20 40V28h8v12"/></g></svg></div>
     <h1 style="font-size:28px;line-height:34px">Join a household</h1>
     <p class="sub" style="margin:8px 0 18px">Everyone in the house shares one code.</p>
+    <p class="sub hide" id="gate-error" data-ref="gate-error" style="color:var(--negative);text-align:left;padding-bottom:var(--s-base)"></p>
     <input class="field" id="join-code" data-ref="house-code-input" placeholder="HOUSE CODE" maxlength="12" style="text-align:center;text-transform:uppercase;letter-spacing:.14em;font-weight:700">
     <button class="btn" id="btn-join" data-ref="join-house-btn">Join house</button>
     <div class="row" style="margin:16px 0 12px"><div style="flex:1;height:1px;background:var(--separator)"></div><span class="sub">or</span><div style="flex:1;height:1px;background:var(--separator)"></div></div>
@@ -895,7 +896,16 @@ function signIn(p){
     let landed = false;
     window.HC_SYNC.watchHouses(p.id, houses, err => {
       housesLoaded = true;
-      if(err) return;
+      if(err){
+        // Never leave someone watching a spinner. Say what went wrong and let
+        // them get on with creating or joining a house.
+        houseError = String(err && err.code).includes("permission-denied")
+          ? "The database wouldn't list your households — the published security rules are probably older than this app. Re-publish firestore.rules."
+          : fbErr(err);
+        console.warn("houses query", err);
+        return route();
+      }
+      houseError = "";
       // Land in a house only on the FIRST population. Doing it on every
       // snapshot teleports you out of the join gate mid-keystroke whenever a
       // housemate touches anything.
@@ -905,6 +915,14 @@ function signIn(p){
       }
       save(); route();
     });
+    // Watchdog: if the server never answers at all, stop waiting after 10s.
+    setTimeout(()=>{
+      if(!housesLoaded){
+        housesLoaded = true;
+        houseError = "Couldn't reach the database. Check your connection, or try again.";
+        route();
+      }
+    }, 10000);
     if(pendingInfo){ pendingCode = pendingInfo.code; watchRequest(); }
     setTimeout(()=>Object.values(houses).forEach(h=>{
       if(h.adminId === p.id) window.HC_SYNC.ensureNameIndex(h.code, h.name, p.id);
@@ -1050,6 +1068,7 @@ let housesLoaded = !((window.HOUSECART_CONFIG||{}).USE_FIREBASE);   // server ha
    than the sign-in screen, so nobody is asked to sign in and then isn't. */
 let authResolved = !((window.HOUSECART_CONFIG||{}).USE_FIREBASE);
 let gateOpen = false;                          // gate opened deliberately from Account
+let houseError = "";                           // why the household list failed, if it did
 
 async function approveJoin(code, uid){
   const h = houses[code]; if(!isAdmin(h)) return toast("Only the house admin can approve");
@@ -2374,6 +2393,8 @@ function route(){
     $("#btn-recheck").classList.toggle("hide", CLOUD());
   }
   if(gate || gateOpen){
+    const eb = $("#gate-error");
+    if(eb){ eb.textContent = houseError; eb.classList.toggle("hide", !houseError); }
     const mine = Object.values(houses).filter(h=>h.members.some(m=>m.id===me.id));
     $("#mine").innerHTML = mine.length ? "Your houses: " + mine.map(h=>`<a href="#" onclick="switchHouse('${h.code}');route();return false"><b>${esc(h.name)}</b> (${h.code})</a>`).join(", ") : "";
   }

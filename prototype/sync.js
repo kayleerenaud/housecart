@@ -127,7 +127,21 @@ function watchHouses(uid, houses, onChange){
       if(!live.has(code)){ seen.get(code).forEach(f=>{try{f()}catch(e){}}); seen.delete(code); delete houses[code]; }
     });
     onChange();
-  }, err => { console.warn("houses", err.code); onChange(err); }));
+  }, err => {
+    console.warn("houses query", err.code);
+    /* A refused or failed QUERY shouldn't cost you your houses. Fall back to
+       reading the ones we already know the codes of, one by one — a direct get
+       takes a different rules path than a collection query. */
+    const known = Object.keys(houses);
+    if(!known.length) return onChange(err);
+    Promise.all(known.map(async code => {
+      try {
+        const d = await getDoc(doc(db,"houses",code));
+        if(d.exists() && (d.data().memberIds||[]).includes(uid)) houses[code] = { ...houses[code], ...d.data(), code };
+        else delete houses[code];
+      } catch(e){ /* leave the cached copy */ }
+    })).then(() => onChange(Object.keys(houses).length ? null : err));
+  }));
 
   listeners.push(() => seen.forEach(subs => subs.forEach(f=>{try{f()}catch(e){}})));
 }

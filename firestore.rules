@@ -21,7 +21,10 @@ service cloud.firestore {
     }
 
     match /houses/{code} {
-      allow read: if isMember(code);
+      /* Read is checked against the document itself rather than via a get() —
+         cheaper, and unambiguous for collection queries, which is how the app
+         finds every house you belong to. */
+      allow read: if signedIn() && request.auth.uid in resource.data.memberIds;
       allow create: if signedIn()
         && request.resource.data.adminId == request.auth.uid
         && request.resource.data.memberIds.size() == 1
