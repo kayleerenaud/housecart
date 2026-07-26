@@ -113,8 +113,30 @@ async function createHouse(code, name, member){
     code, name, adminId: member.id, memberIds: [member.id], members: [member], createdAt: Date.now()
   }));
   await setDoc(doc(db,"houseCodes",code), clean({
-    name, adminId: member.id, adminName: member.name, createdAt: Date.now()
+    name, nameLower: name.trim().toLowerCase(),
+    adminId: member.id, adminName: member.name, createdAt: Date.now()
   }));
+}
+
+/* House names are global: two houses called "Maple St" would make a shared code
+   ambiguous to talk about. houseCodes is readable by any signed-in user, so the
+   check needs no extra collection or rule. */
+async function nameTaken(name){
+  const key = String(name||"").trim().toLowerCase();
+  if(!key) return false;
+  const snap = await getDocs(query(collection(db,"houseCodes"), where("nameLower","==",key)));
+  return !snap.empty;
+}
+
+/* Houses created before nameLower existed wouldn't be found by that query, so
+   the admin's own house backfills itself quietly on sign-in. */
+async function ensureNameIndex(code, name, adminId){
+  try{
+    const ref = doc(db,"houseCodes",code);
+    const d = await getDoc(ref);
+    if(d.exists() && !d.data().nameLower)
+      await updateDoc(ref, { nameLower: String(name||"").trim().toLowerCase() });
+  }catch(e){ /* not admin, or offline — harmless */ }
 }
 
 const requestJoin = (code, who) =>
@@ -176,6 +198,6 @@ window.HC_SYNC = {
   ready: true, signInWithGoogleIdToken, onUser, signOutFirebase: () => signOut(auth),
   watchHouses, watchMyRequest, peekHouse, createHouse, requestJoin, cancelJoin,
   approveJoin, denyJoin, setMembers, putPantry, dropPantry, putTrip, putPayment,
-  codeTaken, deleteHouse, removeMember, stop
+  codeTaken, nameTaken, ensureNameIndex, deleteHouse, removeMember, stop
 };
 window.dispatchEvent(new Event("hc-sync-ready"));

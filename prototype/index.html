@@ -472,7 +472,8 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
     <input class="field" id="join-code" data-ref="house-code-input" placeholder="HOUSE CODE" maxlength="12" style="text-align:center;text-transform:uppercase;letter-spacing:.14em;font-weight:700">
     <button class="btn" id="btn-join" data-ref="join-house-btn">Join house</button>
     <div class="row" style="margin:16px 0 12px"><div style="flex:1;height:1px;background:var(--separator)"></div><span class="sub">or</span><div style="flex:1;height:1px;background:var(--separator)"></div></div>
-    <input class="field" id="new-house" placeholder="New house name — “Maple St”">
+    <input class="field" id="new-house" data-ref="new-house-input" placeholder="New house name — “Maple St”" maxlength="40">
+    <p class="sub hide" id="name-err" data-ref="name-error" style="color:var(--negative);text-align:left;padding:0 var(--s-micro) var(--s-base)"></p>
     <button class="btn ghost" id="btn-create" data-ref="create-house-btn">Create a house</button>
     <p class="sub" id="mine" style="margin-top:16px"></p>
   </div>
@@ -846,6 +847,9 @@ function signIn(p){
       save(); route();
     });
     if(pendingInfo){ pendingCode = pendingInfo.code; watchRequest(); }
+    setTimeout(()=>Object.values(houses).forEach(h=>{
+      if(h.adminId === p.id) window.HC_SYNC.ensureNameIndex(h.code, h.name, p.id);
+    }), 2500);
     route();
     return;
   }
@@ -879,13 +883,33 @@ function migrateHouses(){
 migrateHouses();
 
 /* ═══════════ 2. HOUSEHOLD ═══════════ */
-const CODE_WORDS = ["MAPLE","CEDAR","ORCHID","HARBOR","WILLOW","JUNIPER"];
+/* A plant and four digits — reads nicely out loud ("Sage forty-eight
+   twenty-one") and there are ~250,000 of them, so a stranger can't stumble
+   onto your grocery history by guessing. */
+const CODE_WORDS = ["FERN","MOSS","ALOE","SAGE","IVY","FIG","OLIVE","CEDAR","WILLOW","MAPLE",
+  "ASPEN","BIRCH","ORCHID","DAHLIA","PEONY","LILAC","THYME","BASIL","CLOVER","POPPY",
+  "TULIP","JASMINE","JUNIPER","LAUREL","MAGNOLIA","LOTUS","CACTUS","FIR"];
 function newCode(){
-  let c; do { c = CODE_WORDS[Math.floor(Math.random()*CODE_WORDS.length)] + Math.floor(Math.random()*90+10); } while(houses[c]);
+  let c;
+  do {
+    const w = CODE_WORDS[Math.floor(Math.random()*CODE_WORDS.length)];
+    c = w + String(Math.floor(Math.random()*9000) + 1000);
+  } while(houses[c]);
   return c;
 }
 $("#btn-create").onclick = async () => {
-  const name = $("#new-house").value.trim() || "My house";
+  const name = $("#new-house").value.trim();
+  if(!name) return nameError("Give the household a name");
+  if(name.length < 2) return nameError("That name is a bit short");
+  nameError("");
+  if(CLOUD()){
+    try {
+      if(await window.HC_SYNC.nameTaken(name))
+        return nameError(`“${name}” is already taken — pick another`);
+    } catch(e){ /* offline: fall through and let the code stay unique */ }
+  } else if(Object.values(houses).some(h => (h.name||"").trim().toLowerCase() === name.toLowerCase())){
+    return nameError(`“${name}” is already taken — pick another`);
+  }
   let code = newCode();
   if(CLOUD()){
     // check the code against the SERVER, not just this browser — otherwise two
@@ -952,6 +976,12 @@ function watchRequest(){
 }
 
 /* ── approvals ── */
+function nameError(msg){
+  const el = $("#name-err"); if(!el) return;
+  el.textContent = msg || "";
+  el.classList.toggle("hide", !msg);
+  if(msg){ $("#new-house").focus(); toast(msg); }
+}
 const isAdmin  = h => h && h.adminId === me?.id;
 const adminOf  = h => (h?.members || []).find(m => m.id === h.adminId) || {name:"the house admin"};
 let pendingCode = null;                       // house we're waiting on, if any
@@ -2050,7 +2080,7 @@ applyVibe(currentVibe(), currentVariant());
 route();
 
 /* expose for inline handlers */
-Object.assign(window,{signIn,closeSheet,approveJoin,denyJoin,cancelRequest,recheckRequest,isAdmin,addManual,delItem,toggleLine,toggleWho,renameLine,toggleExpand,signOut,confirmSignOut,setPrice,setVibe,setVariant,renderAccount,swipeDelete,deleteHouseFlow,leaveHouseFlow,removeHousemate,renderHouseDanger,switchHouse,leaveToGate,recordPayment,tripDetail,onBarcode,$,cycleStock,restock,itemSheet,setWeight,balanceWeights});
+Object.assign(window,{signIn,closeSheet,approveJoin,denyJoin,cancelRequest,recheckRequest,isAdmin,addManual,delItem,toggleLine,toggleWho,renameLine,toggleExpand,signOut,confirmSignOut,setPrice,nameError,setVibe,setVariant,renderAccount,swipeDelete,deleteHouseFlow,leaveHouseFlow,removeHousemate,renderHouseDanger,switchHouse,leaveToGate,recordPayment,tripDetail,onBarcode,$,cycleStock,restock,itemSheet,setWeight,balanceWeights});
 </script>
 </body>
 </html>

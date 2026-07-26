@@ -46,7 +46,7 @@ await p.fill('#new-house', 'Maple St');
 await p.click('[data-ref="create-house-btn"]');
 await p.waitForSelector('#app:not(.hide)');
 const code = await p.textContent('#house-code');
-ok(/^[A-Z]+\d{2}$/.test(code), `house created with joinable code: ${code}`);
+ok(/^[A-Z]+\d{4}$/.test(code), `house created with joinable code: ${code}`);
 
 // two housemates join with the code (same flow the real app uses)
 await p.evaluate(() => {
