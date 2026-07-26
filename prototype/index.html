@@ -489,8 +489,9 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
 </section>
 
 <div id="rules-warn" class="hide" style="position:fixed;left:0;right:0;bottom:0;z-index:300;background:var(--negative);color:#fff;padding:var(--s-2);font-size:13px;line-height:18px">
-  <b>Firestore isn't accepting writes.</b> The security rules haven't been published yet, so nothing can save.
-  Firebase console → Firestore → Rules → paste <code style="color:#fff">firestore.rules</code> → Publish.
+  <b>Firestore refused a write</b> (<span id="rules-what">—</span>). Usually this means the published rules are
+  an older version than the app expects. Firebase console → Firestore → Rules → select all → paste the current
+  <code style="color:#fff">firestore.rules</code> → Publish.
   <button onclick="this.parentNode.classList.add('hide')" style="color:#fff;text-decoration:underline;margin-left:var(--s-base)">dismiss</button>
 </div>
 
@@ -643,7 +644,10 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
       </div>
       <div class="secfoot">Your own look — housemates keep whatever they picked.</div>
 
-      <div class="sechead">Household</div>
+      <div class="sechead">Your households</div>
+      <div class="card" id="acct-houses" data-ref="account-houses"></div>
+
+      <div class="sechead">Current household</div>
       <div class="card">
         <div class="itemrow" style="cursor:pointer" onclick="$('#house-switch').click()">
           <div class="thumb"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7M5 10v10h14V10"/></svg></div>
@@ -757,9 +761,10 @@ async function cloud(fn, ...args){
     // Creating a house is the first write anyone makes. If THAT is refused,
     // it's almost never membership — it's that firestore.rules was never
     // published, so the database is still refusing everything.
-    if(fn === "createHouse" && String(e && e.code).includes("permission-denied")){
+    if(String(e && e.code).includes("permission-denied")){
       $("#rules-warn")?.classList.remove("hide");
-      return toast("Database is refusing writes — rules not published yet");
+      $("#rules-what") && ($("#rules-what").textContent = fn);
+      return toast("The database refused that write");
     }
     toast(fbErr(e));
   }
@@ -836,7 +841,7 @@ function initAuth(){
     google.accounts.id.initialize({
       client_id: GOOGLE_CLIENT_ID,
       callback: onCredential,
-      auto_select: false,
+      auto_select: true,          // a returning user shouldn't have to tap again
       cancel_on_tap_outside: true,
       use_fedcm_for_prompt: true
     });
@@ -1005,6 +1010,10 @@ const isAdmin  = h => h && h.adminId === me?.id;
 const adminOf  = h => (h?.members || []).find(m => m.id === h.adminId) || {name:"the house admin"};
 let pendingCode = null;                       // house we're waiting on, if any
 let housesLoaded = !((window.HOUSECART_CONFIG||{}).USE_FIREBASE);   // server has answered
+/* Firebase keeps the session on the device, so a returning user should be signed
+   in without touching anything. Until that resolves we show the spinner rather
+   than the sign-in screen, so nobody is asked to sign in and then isn't. */
+let authResolved = !((window.HOUSECART_CONFIG||{}).USE_FIREBASE);
 let gateOpen = false;                          // gate opened deliberately from Account
 
 async function approveJoin(code, uid){
@@ -1095,6 +1104,38 @@ function confirmSignOut(){
       ? "Sign out? This device is the only copy of this house's data, so signing out erases it."
       : "Sign out of HouseCart?")) signOut();
 }
+/* Lists every household this account can see, and separately anything the
+   server still has a name entry for whose house is gone — so a stranded house
+   can never be invisible. */
+function renderMyHouses(){
+  const box = $("#acct-houses"); if(!box) return;
+  const mine = Object.values(houses).filter(h => (h.members||[]).some(m => m.id === me.id));
+  box.innerHTML = mine.length ? mine.map(h=>`
+    <div class="itemrow" style="cursor:pointer" onclick="switchHouse('${h.code}')">
+      <div class="thumb"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7M5 10v10h14V10"/></svg></div>
+      <div style="flex:1;min-width:0"><div class="iname">${esc(h.name)}${h.code===cur?' <span class="tag">current</span>':''}</div>
+        <div class="imeta">${(h.members||[]).length} housemate${(h.members||[]).length===1?"":"s"} · ${h.code}${isAdmin(h)?" · you admin it":""}</div></div>
+      <svg class="chev" viewBox="0 0 8 14" aria-hidden="true"><path d="M1 1l6 6-6 6"/></svg>
+    </div>`).join("") : `<div class="empty" style="padding:var(--s-3)">No households yet.</div>`;
+  if(CLOUD()) window.HC_SYNC.myHouseCodes(me.id).then(rows=>{
+    const stranded = rows.filter(r => !r.exists);
+    if(!stranded.length || !$("#acct-houses")) return;
+    box.insertAdjacentHTML("beforeend", stranded.map(r=>`
+      <div class="itemrow">
+        <div class="thumb">!</div>
+        <div style="flex:1;min-width:0"><div class="iname">${esc(r.name)}</div>
+          <div class="imeta" style="color:var(--warning)">Deleted, but its name is still reserved</div></div>
+        <button class="btn ghost sm" style="color:var(--negative)" onclick="releaseName('${r.code}','${esc(r.name).replace(/'/g,"")}')">Release</button>
+      </div>`).join(""));
+  }).catch(()=>{});
+}
+
+async function releaseName(code, name){
+  if(!confirm(`Free up the name “${name}” so it can be used again?`)) return;
+  try { await window.HC_SYNC.releaseCode(code); toast("Name released"); renderMyHouses(); }
+  catch(e){ toast(fbErr(e)); }
+}
+
 function renderHouseDanger(){
   const box = $("#house-danger"); if(!box) return;
   const h = H(), admin = isAdmin(h);
@@ -1896,6 +1937,7 @@ function renderAccount(){
     $("#acct-house-sub").textContent =
       `${H().name} · ${H().members.length} housemate${H().members.length===1?"":"s"} · code ${H().code}`;
   }
+  renderMyHouses();
   const cv = currentVibe(), cvar = currentVariant(), d = vibeDef(cv);
   $("#vibes").innerHTML = VIBES.map(v=>`
     <button class="vibecard ${v.id===cv?'on':''}" onclick="setVibe('${v.id}')" data-vibe-pick="${v.id}">
@@ -2093,10 +2135,12 @@ function route(){
   const waiting = signed && !housed && pendingCode && (houses[pendingCode] || pendingInfo);
   // Don't conclude someone is house-less until the server has actually answered,
   // otherwise a returning user gets flashed the "create a house" screen.
-  const settling = signed && !housed && !waiting && CLOUD() && !housesLoaded;
+  const restoring = !signed && CLOUD() && !authResolved;
+  const settling = (signed && !housed && !waiting && CLOUD() && !housesLoaded) || restoring;
   const gate     = signed && !housed && !waiting && !settling;
-  $("#signin").classList.toggle("hide", signed);
+  $("#signin").classList.toggle("hide", signed || restoring);
   $("#loading").classList.toggle("hide", !settling);
+  $("#loading .sub").textContent = restoring ? "Signing you back in…" : "Finding your households…";
   $("#waiting").classList.toggle("hide", !waiting);
   $("#housegate").classList.toggle("hide", !(gate || gateOpen) || !!housed && !gateOpen);
   $("#app").classList.toggle("hide", !housed || gateOpen);
@@ -2120,6 +2164,7 @@ function bootCloud(){
   if(!CLOUD() || cloudBooted) return;      // both the event and onload fire
   cloudBooted = true;
   window.HC_SYNC.onUser(u => {
+    authResolved = true;
     // On reload the restored session has the SAME uid, so this must still
     // (re)attach listeners — otherwise the app silently runs on stale cache.
     if(u) signIn({ ...u, googlePic: u.pic || (me && me.googlePic) || "",
@@ -2129,12 +2174,15 @@ function bootCloud(){
 }
 let cloudBooted = false;
 window.addEventListener("hc-sync-ready", bootCloud);
-window.onload = () => { initAuth(); bootCloud(); };
+window.onload = () => {
+  initAuth(); bootCloud();
+  setTimeout(()=>{ if(!authResolved){ authResolved = true; route(); } }, 4000);
+};
 applyVibe(currentVibe(), currentVariant());
 route();
 
 /* expose for inline handlers */
-Object.assign(window,{signIn,closeSheet,approveJoin,denyJoin,cancelRequest,recheckRequest,isAdmin,addManual,delItem,toggleLine,toggleWho,renameLine,toggleExpand,signOut,confirmSignOut,setPrice,nameError,openGate,closeGate,setVibe,setVariant,renderAccount,swipeDelete,deleteHouseFlow,leaveHouseFlow,removeHousemate,renderHouseDanger,switchHouse,leaveToGate,recordPayment,tripDetail,onBarcode,$,cycleStock,restock,itemSheet,setWeight,balanceWeights});
+Object.assign(window,{signIn,closeSheet,approveJoin,denyJoin,cancelRequest,recheckRequest,isAdmin,addManual,delItem,toggleLine,toggleWho,renameLine,toggleExpand,signOut,confirmSignOut,setPrice,nameError,openGate,closeGate,releaseName,renderMyHouses,setVibe,setVariant,renderAccount,swipeDelete,deleteHouseFlow,leaveHouseFlow,removeHousemate,renderHouseDanger,switchHouse,leaveToGate,recordPayment,tripDetail,onBarcode,$,cycleStock,restock,itemSheet,setWeight,balanceWeights});
 </script>
 </body>
 </html>

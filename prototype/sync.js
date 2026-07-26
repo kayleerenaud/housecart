@@ -125,7 +125,32 @@ async function nameTaken(name){
   const key = String(name||"").trim().toLowerCase();
   if(!key) return false;
   const snap = await getDocs(query(collection(db,"houseCodes"), where("nameLower","==",key)));
-  return !snap.empty;
+  if(snap.empty) return false;
+  // A name is only really taken if the household behind it still exists. Entries
+  // left over from a deletion are cleared here, so a name can never be
+  // permanently lost to a bookkeeping mistake.
+  let taken = false;
+  for(const d of snap.docs){
+    const h = await getDoc(doc(db,"houses",d.id));
+    if(h.exists()){ taken = true; continue; }
+    try { await deleteDoc(d.ref); console.info("cleared stale name entry", d.id); }
+    catch(e){ console.warn("stale name entry needs a rules update to clear:", d.id, e.code); taken = true; }
+  }
+  return taken;
+}
+
+const releaseCode = code => deleteDoc(doc(db,"houseCodes",code));
+
+/* Every household this account belongs to OR admins, including ones whose house
+   document is missing — used by Account so nothing can hide from you. */
+async function myHouseCodes(uid){
+  const out = [];
+  const snap = await getDocs(query(collection(db,"houseCodes"), where("adminId","==",uid)));
+  for(const d of snap.docs){
+    const h = await getDoc(doc(db,"houses",d.id));
+    out.push({ code:d.id, name:d.data().name, adminName:d.data().adminName, exists:h.exists() });
+  }
+  return out;
 }
 
 /* Houses created before nameLower existed wouldn't be found by that query, so
@@ -173,12 +198,16 @@ const codeTaken = code => getDoc(doc(db,"houseCodes",code)).then(d => d.exists()
    everyone. Subcollections don't cascade in Firestore, so they're cleared
    explicitly before the house document and its code entry. */
 async function deleteHouse(code){
+  // ORDER MATTERS. Every permission check for a house's bits reads the house
+  // document, so it has to be the LAST thing deleted. Removing it first orphans
+  // the name entry — the rules then refuse to delete it and the household name
+  // stays registered forever.
+  await deleteDoc(doc(db,"houseCodes",code));
   for(const sub of ["pantry","trips","payments","joinRequests"]){
     const snap = await getDocs(collection(db,"houses",code,sub));
     await Promise.all(snap.docs.map(d => deleteDoc(d.ref)));
   }
   await deleteDoc(doc(db,"houses",code));
-  await deleteDoc(doc(db,"houseCodes",code));
 }
 
 /* Used both by an admin removing someone and by a member letting themselves
@@ -198,6 +227,6 @@ window.HC_SYNC = {
   ready: true, signInWithGoogleIdToken, onUser, signOutFirebase: () => signOut(auth),
   watchHouses, watchMyRequest, peekHouse, createHouse, requestJoin, cancelJoin,
   approveJoin, denyJoin, setMembers, putPantry, dropPantry, putTrip, putPayment,
-  codeTaken, nameTaken, ensureNameIndex, deleteHouse, removeMember, stop
+  codeTaken, nameTaken, myHouseCodes, releaseCode, ensureNameIndex, deleteHouse, removeMember, stop
 };
 window.dispatchEvent(new Event("hc-sync-ready"));

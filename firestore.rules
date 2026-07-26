@@ -7,10 +7,17 @@ service cloud.firestore {
     function isMember(code) { return signedIn() && request.auth.uid in house(code).memberIds; }
     function isAdmin(code) { return signedIn() && request.auth.uid == house(code).adminId; }
 
+    /* The code/name entry is governed by ITS OWN adminId, not by the house
+       document. Using isAdmin(code) here meant that once a house was deleted
+       nobody could ever clear its name entry again, because the check read a
+       document that no longer existed. */
     match /houseCodes/{code} {
       allow read: if signedIn();
       allow create: if signedIn() && request.resource.data.adminId == request.auth.uid;
-      allow update, delete: if isAdmin(code);
+      allow update: if signedIn() && resource.data.adminId == request.auth.uid;
+      allow delete: if signedIn()
+        && (resource.data.adminId == request.auth.uid
+            || !exists(/databases/$(database)/documents/houses/$(code)));
     }
 
     match /houses/{code} {
