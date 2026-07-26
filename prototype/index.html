@@ -684,10 +684,13 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
 
     <!-- ── SPENDING ── -->
     <section id="tab-spend" class="hide" data-ref="spending-tab">
-      <div class="stat" style="margin:12px 0">
-        <div><div class="n" id="s-house">$0</div><div class="l">House total</div></div>
-        <div><div class="n" id="s-me">$0</div><div class="l">Your share</div></div>
-        <div><div class="n" id="s-trips">0</div><div class="l">Trips</div></div>
+      <div class="stat" style="margin:var(--s-2) 0">
+        <div role="button" tabindex="0" style="cursor:pointer" onclick="scrollToHistory()" aria-label="House total — see trip history">
+          <div class="l">House total</div><div class="n" id="s-house">$0</div></div>
+        <div role="button" tabindex="0" style="cursor:pointer" onclick="go('settle')" aria-label="Your share — go to Settle">
+          <div class="l">Your share</div><div class="n" id="s-me">$0</div></div>
+        <div role="button" tabindex="0" style="cursor:pointer" onclick="scrollToHistory()" aria-label="Trips — see trip history">
+          <div class="l">Trips</div><div class="n" id="s-trips">0</div></div>
       </div>
       <div class="card">
         <h2>Month by month</h2>
@@ -1964,7 +1967,8 @@ function renderSettle(){
   $("#seesaw").innerHTML = rows.length ? rows.map(([uid,v])=>{
     const m = mem.find(x=>x.id===uid) || {name:"Housemate", venmo:""};
     const up = v > 0, pct = Math.min(50, Math.abs(v)/scale*50);
-    return `<div class="see">
+    return `<div class="see" style="cursor:pointer" role="button" onclick="$('#btn-squareup').click()"
+        aria-label="Square up with ${esc(m.name)}">
       <div class="avatar">${m.pic?`<img src="${esc(m.pic)}">`:initials(m.name)}</div>
       <div style="flex:0 0 auto;width:74px;font-size:13.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.name.split(" ")[0])}</div>
       <div class="seetrack">
@@ -1972,6 +1976,7 @@ function renderSettle(){
                        : `right:50%;width:${pct}%;background:var(--label-2);opacity:.4`}"></i>
       </div>
       <div class="seeamt">${money(Math.abs(v))}<small>${up?'owed':'owes'}</small></div>
+      <svg class="chev" viewBox="0 0 8 14" aria-hidden="true"><path d="M1 1l6 6-6 6"/></svg>
     </div>`;
   }).join("") : `<div class="empty"><b>Perfectly balanced</b>Nobody owes anybody a cent. Go split a pizza and ruin it.</div>`;
 
@@ -2190,6 +2195,10 @@ $("#btn-venmo-save").onclick = () => {
 };
 
 /* ═══════════ 6. SPENDING ═══════════ */
+function scrollToHistory(){
+  const h = $("#history");
+  if(h) h.closest(".card").scrollIntoView({behavior:"smooth", block:"center"});
+}
 function renderSpend(){
   const trips = H().trips, mem = H().members;
   const houseTotal = trips.reduce((a,t)=>a+t.total,0);
@@ -2363,7 +2372,7 @@ applyVibe(currentVibe(), currentVariant());
 route();
 
 /* expose for inline handlers */
-Object.assign(window,{signIn,closeSheet,approveJoin,denyJoin,cancelRequest,recheckRequest,isAdmin,addManual,delItem,toggleLine,toggleWho,renameLine,toggleExpand,signOut,confirmSignOut,setPrice,nameError,openGate,closeGate,releaseName,renderMyHouses,resetFlow,openHouse,markSeen,renderBadges,renderAlerts,setVibe,setVariant,renderAccount,swipeDelete,deleteHouseFlow,leaveHouseFlow,removeHousemate,renderHouseDanger,switchHouse,leaveToGate,recordPayment,tripDetail,onBarcode,$,cycleStock,restock,itemSheet,setWeight,balanceWeights});
+Object.assign(window,{signIn,closeSheet,approveJoin,denyJoin,cancelRequest,recheckRequest,isAdmin,addManual,delItem,toggleLine,toggleWho,renameLine,toggleExpand,signOut,confirmSignOut,setPrice,nameError,openGate,closeGate,releaseName,renderMyHouses,resetFlow,openHouse,markSeen,renderBadges,renderAlerts,scrollToHistory,setVibe,setVariant,renderAccount,swipeDelete,deleteHouseFlow,leaveHouseFlow,removeHousemate,renderHouseDanger,switchHouse,leaveToGate,recordPayment,tripDetail,onBarcode,$,cycleStock,restock,itemSheet,setWeight,balanceWeights});
 </script>
 </body>
 </html>
