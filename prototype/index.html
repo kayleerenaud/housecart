@@ -402,7 +402,14 @@ main > .btn, main > section > .btn{margin-bottom:var(--s-4)}
 /* ---------- tab bar ---------- */
 .tabbar{flex:0 0 auto;position:relative;background:var(--material);backdrop-filter:blur(20px) saturate(1.8);border-top:.5px solid var(--separator);z-index:50;padding-bottom:env(safe-area-inset-bottom)}
 .tabbar .wrap{display:flex;height:49px;padding:0}
-.tabbar button{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--label-2);font-size:10px;font-weight:500;letter-spacing:.1px}
+.tabbar button{position:relative;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--label-2);font-size:10px;font-weight:500;letter-spacing:.1px}
+.badge{position:absolute;top:3px;left:calc(50% + 6px);min-width:18px;height:18px;padding:0 5px;border-radius:999px;
+  background:var(--negative);color:#fff;font-size:11px;font-weight:700;letter-spacing:0;line-height:18px;text-align:center;
+  box-shadow:0 0 0 2px var(--material)}
+.alert{display:flex;gap:12px;align-items:center;padding:var(--s-base) 0;min-height:56px;position:relative;cursor:pointer}
+.alert:not(:last-child)::after{content:"";position:absolute;left:41px;right:calc(-1 * var(--inset));bottom:0;height:.5px;background:var(--separator)}
+.alertdot{width:29px;height:29px;border-radius:var(--r-icon);background:var(--tint-soft);color:var(--tint);
+  display:grid;place-items:center;flex:0 0 auto;font-size:15px;font-weight:700}
 .tabbar button.on{color:var(--tint)}
 .tabbar svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 
@@ -523,6 +530,7 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
       <div class="lsub" id="screen-sub"></div>
     <!-- ── PANTRY ── -->
     <section id="tab-pantry" data-ref="pantry-tab">
+      <div id="alerts" class="hide" data-ref="alerts"></div>
       <div id="approvals" class="hide" data-ref="join-requests"></div>
       <div class="card">
         <h2>Add groceries</h2>
@@ -1059,6 +1067,66 @@ function recheckRequest(){
   if(h && h.members.some(m=>m.id===me.id)){ cur = pendingCode; pendingCode = null; save(); route(); toast("You're in!"); }
   else if(h && !(h.pending||[]).some(r=>r.id===me.id)){ pendingCode = null; save(); route(); toast("That request was declined"); }
   else toast("Still waiting on " + adminOf(h).name.split(" ")[0]);
+}
+
+/* No push notifications, so anything that needs a person is collected here, at
+   the top of the first screen they land on, and mirrored as tab-bar badges. */
+function seenKey(){ return "seen:" + cur; }
+function seenAt(){ return DB.get(seenKey(), 0); }
+function markSeen(){ DB.set(seenKey(), Date.now()); renderBadges(); }
+
+function pendingCount(){ const h = H(); return (isAdmin(h) ? (h.pending||[]).length : 0); }
+function newTrips(){
+  const h = H(); if(!h) return [];
+  const since = seenAt();
+  return (h.trips||[]).filter(t => t.payer !== me.id && (t.at||0) > since && (t.owed||{})[me.id] > 0.005);
+}
+
+function renderAlerts(){
+  const box = $("#alerts"); if(!box) return;
+  const h = H(); if(!h){ box.classList.add("hide"); return; }
+  const rows = [];
+  // Join requests deliberately DON'T appear here: the approve/deny card is
+  // already on this screen, and saying it twice is noise. The tab badge covers
+  // the case where you're looking at another screen.
+  const nt = newTrips();
+  if(nt.length){
+    const owed = nt.reduce((a,t)=>a+((t.owed||{})[me.id]||0), 0);
+    rows.push({ dot:"$", title:`${nt.length} new receipt${nt.length===1?"":"s"}`,
+      sub:`You owe ${money(owed)} — ${esc([...new Set(nt.map(t=>t.payerName.split(" ")[0]))].join(", "))} paid`,
+      go:"settle" });
+  }
+  const mine = h.members.find(m=>m.id===me.id);
+  if(!mine || !mine.venmo) rows.push({
+    dot:"@", title:"No Venmo handle yet", sub:"Housemates can't pay you back without one", go:"account" });
+
+  box.classList.toggle("hide", rows.length === 0);
+  if(!rows.length){ box.innerHTML = ""; return; }   // don't leave stale rows in the DOM
+  box.innerHTML = `<div class="sechead" style="padding-left:0">Needs you</div>
+    <div class="card">${rows.map(r=>`
+      <div class="alert"${r.go?` onclick="go('${r.go}')"`:""}>
+        <div class="alertdot">${r.dot}</div>
+        <div style="flex:1;min-width:0"><div class="iname">${r.title}</div><div class="imeta">${r.sub}</div></div>
+        ${r.go?`<svg class="chev" viewBox="0 0 8 14" aria-hidden="true"><path d="M1 1l6 6-6 6"/></svg>`:""}
+      </div>`).join("")}</div>`;
+}
+
+function renderBadges(){
+  if(!H()) return;
+  const counts = { pantry: pendingCount(), receipt: 0, settle: newTrips().length, spend: 0 };
+  $$(".tabbar button").forEach(btn => {
+    const n = counts[btn.dataset.tab] || 0;
+    let b = btn.querySelector(".badge");
+    if(!n){ if(b) b.remove(); return; }
+    if(!b){ b = document.createElement("span"); b.className = "badge"; btn.appendChild(b); }
+    b.textContent = n > 9 ? "9+" : n;
+    b.setAttribute("aria-label", `${n} needing attention`);
+  });
+  // an installed app can badge its own home-screen icon
+  const total = Object.values(counts).reduce((a,n)=>a+n, 0);
+  try {
+    if(navigator.setAppBadge){ total ? navigator.setAppBadge(total) : navigator.clearAppBadge(); }
+  } catch(e){}
 }
 
 function renderApprovals(){
@@ -2181,6 +2249,7 @@ function go(tab){
   $$(".tabbar button").forEach(b=>b.classList.toggle("on", b.dataset.tab===tab));
   ["pantry","receipt","settle","spend","account"].forEach(t=>$("#tab-"+t).classList.toggle("hide", t!==tab));
   if(tab === "account") renderAccount();
+  if(tab === "settle" || tab === "spend") markSeen();
   render();
 }
 $$(".tabbar button").forEach(b=>b.onclick=()=>go(b.dataset.tab));
@@ -2227,7 +2296,7 @@ function render(){
       : `<div class="empty"><b>Nothing on the shelves</b>Scan the first thing you find in the kitchen and we'll take it from there.</div>`;
   }
   bindSwipe($("#pantry-list"));
-  renderApprovals(); renderSettle(); renderSpend();
+  renderApprovals(); renderAlerts(); renderBadges(); renderSettle(); renderSpend();
 }
 $("#btn-gate-cancel").onclick = closeGate;
 $("#btn-recheck").onclick    = recheckRequest;
@@ -2287,7 +2356,7 @@ applyVibe(currentVibe(), currentVariant());
 route();
 
 /* expose for inline handlers */
-Object.assign(window,{signIn,closeSheet,approveJoin,denyJoin,cancelRequest,recheckRequest,isAdmin,addManual,delItem,toggleLine,toggleWho,renameLine,toggleExpand,signOut,confirmSignOut,setPrice,nameError,openGate,closeGate,releaseName,renderMyHouses,resetFlow,openHouse,setVibe,setVariant,renderAccount,swipeDelete,deleteHouseFlow,leaveHouseFlow,removeHousemate,renderHouseDanger,switchHouse,leaveToGate,recordPayment,tripDetail,onBarcode,$,cycleStock,restock,itemSheet,setWeight,balanceWeights});
+Object.assign(window,{signIn,closeSheet,approveJoin,denyJoin,cancelRequest,recheckRequest,isAdmin,addManual,delItem,toggleLine,toggleWho,renameLine,toggleExpand,signOut,confirmSignOut,setPrice,nameError,openGate,closeGate,releaseName,renderMyHouses,resetFlow,openHouse,markSeen,renderBadges,renderAlerts,setVibe,setVariant,renderAccount,swipeDelete,deleteHouseFlow,leaveHouseFlow,removeHousemate,renderHouseDanger,switchHouse,leaveToGate,recordPayment,tripDetail,onBarcode,$,cycleStock,restock,itemSheet,setWeight,balanceWeights});
 </script>
 </body>
 </html>
