@@ -1075,6 +1075,7 @@ let housesLoaded = !((window.HOUSECART_CONFIG||{}).USE_FIREBASE);   // server ha
    in without touching anything. Until that resolves we show the spinner rather
    than the sign-in screen, so nobody is asked to sign in and then isn't. */
 let authResolved = !((window.HOUSECART_CONFIG||{}).USE_FIREBASE);
+let returningFromGoogle = false;               // mid-handshake: we were just at Google's page
 let gateOpen = false;                          // gate opened deliberately from Account
 let houseError = "";                           // why the household list failed, if it did
 
@@ -2444,12 +2445,17 @@ function route(){
   const waiting = signed && !housed && pendingCode && (houses[pendingCode] || pendingInfo);
   // Don't conclude someone is house-less until the server has actually answered,
   // otherwise a returning user gets flashed the "create a house" screen.
-  const restoring = !signed && CLOUD() && !authResolved;
+  // Two reasons not to conclude "signed out" yet: the stored session hasn't
+  // reported in, or we're literally mid-handshake with Google. Showing the
+  // sign-in screen during either one is how someone ends up signing in twice.
+  const restoring = !signed && CLOUD() && (!authResolved || returningFromGoogle);
   const settling = (signed && !housed && !waiting && CLOUD() && !housesLoaded) || restoring;
   const gate     = signed && !housed && !waiting && !settling;
   $("#signin").classList.toggle("hide", signed || restoring);
   $("#loading").classList.toggle("hide", !settling);
-  $("#loading .sub").textContent = restoring ? "Signing you back in…" : "Finding your households…";
+  $("#loading .sub").textContent = returningFromGoogle ? "Finishing sign-in with Google…"
+                                 : restoring           ? "Signing you back in…"
+                                 :                       "Finding your households…";
   $("#waiting").classList.toggle("hide", !waiting);
   $("#housegate").classList.toggle("hide", !(gate || gateOpen) || !!housed && !gateOpen);
   $("#app").classList.toggle("hide", !housed || gateOpen);
@@ -2474,15 +2480,38 @@ function route(){
 function bootCloud(){
   if(!CLOUD() || cloudBooted) return;      // both the event and onload fire
   cloudBooted = true;
+  // Read the marker BEFORE completeRedirect clears it: were we handed to
+  // Google a moment ago and are only now coming back?
+  returningFromGoogle = !!(window.HC_SYNC.redirectPending && window.HC_SYNC.redirectPending());
+  if(returningFromGoogle){
+    route();
+    // Google's handshake is slow on a phone, but it can't be allowed to hang
+    // forever either. Wait properly, then say something true.
+    setTimeout(() => {
+      if(returningFromGoogle && !me){
+        returningFromGoogle = false; authResolved = true;
+        if(window.HC_SYNC.clearRedirecting) window.HC_SYNC.clearRedirecting();
+        route();
+        authNote("Google didn't come back to us that time — tap the button to try again.");
+      }
+    }, 20000);
+  }
   // if we're arriving back from Google's page, finish the handshake
-  window.HC_SYNC.completeRedirect().then(u => { if(u && !me) signIn(u); }).catch(()=>{});
+  window.HC_SYNC.completeRedirect()
+    .then(u => { returningFromGoogle = false; if(u && !me) signIn(u); else route(); })
+    .catch(()=>{ returningFromGoogle = false; route(); });
   window.HC_SYNC.onUser(u => {
     authResolved = true;
+    if(u) returningFromGoogle = false;
     // On reload the restored session has the SAME uid, so this must still
     // (re)attach listeners — otherwise the app silently runs on stale cache.
     if(u) signIn({ ...u, googlePic: u.pic || (me && me.googlePic) || "",
                    pic: (me && me.pic) || u.pic || "", venmo: (me && me.venmo) || "" });
     else if(me){ me = null; cur = null; houses = {}; save(); route(); }
+    // Nobody is signed in and nobody was: that's an answer too. Redraw now,
+    // otherwise a first-time visitor sits on the spinner waiting for a
+    // watchdog that has already been satisfied.
+    else route();
   });
 }
 let cloudBooted = false;

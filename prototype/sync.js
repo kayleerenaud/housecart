@@ -59,6 +59,11 @@ async function signInWithGoogle(){
     const c = e && e.code || "";
     if(/popup-blocked|popup-closed-by-user|cancelled-popup-request|operation-not-supported/.test(c)){
       if(/popup-closed-by-user|cancelled-popup-request/.test(c)) throw e;   // they backed out
+      // Leave a note to ourselves that we're mid-handshake. On the way back the
+      // app must WAIT for Google's answer rather than concluding "signed out"
+      // and showing the sign-in screen again — that's how you end up signing
+      // in twice.
+      markRedirecting();
       await signInWithRedirect(auth, provider);        // navigates away; resumes below
       return null;
     }
@@ -66,11 +71,39 @@ async function signInWithGoogle(){
   }
 }
 
+/* ── the "am I mid-redirect?" marker ──────────────────────────────────────
+   Written just before we hand the browser to Google, read on the way back,
+   cleared once Google's answer (either way) has landed. Stored in BOTH
+   session and local storage: iOS occasionally hands a PWA a fresh session
+   storage after a full-page navigation, and localStorage survives that.
+   Stamped with a time so a marker left behind by an abandoned sign-in three
+   days ago can't wedge the app on a spinner. */
+const REDIR_KEY = "hc.redirecting", REDIR_TTL = 5 * 60 * 1000;
+function markRedirecting(){
+  const t = String(nowStamp());
+  try { sessionStorage.setItem(REDIR_KEY, t); } catch(e){}
+  try { localStorage.setItem(REDIR_KEY, t); } catch(e){}
+}
+function clearRedirecting(){
+  try { sessionStorage.removeItem(REDIR_KEY); } catch(e){}
+  try { localStorage.removeItem(REDIR_KEY); } catch(e){}
+}
+function nowStamp(){ return new Date().getTime(); }
+function redirectPending(){
+  let t = 0;
+  try { t = +(sessionStorage.getItem(REDIR_KEY) || 0); } catch(e){}
+  if(!t){ try { t = +(localStorage.getItem(REDIR_KEY) || 0); } catch(e){} }
+  if(!t) return false;
+  if(nowStamp() - t > REDIR_TTL){ clearRedirecting(); return false; }
+  return true;
+}
+
 /* Called on every load: if we just came back from the redirect flow, this
    resolves with the user. */
 async function completeRedirect(){
   try { const r = await getRedirectResult(auth); return r && r.user ? shape(r.user) : null; }
   catch(e){ console.warn("redirect result", e.code); return null; }
+  finally { clearRedirecting(); }
 }
 
 /* Still used if a Google ID token arrives from somewhere else. */
@@ -286,7 +319,8 @@ async function removeMember(code, uid){
 }
 
 window.HC_SYNC = {
-  ready: true, signInWithGoogle, completeRedirect, signInWithGoogleIdToken, onUser, signOutFirebase: () => signOut(auth),
+  ready: true, signInWithGoogle, completeRedirect, redirectPending, clearRedirecting,
+  signInWithGoogleIdToken, onUser, signOutFirebase: () => signOut(auth),
   watchHouses, watchMyRequest, peekHouse, createHouse, requestJoin, cancelJoin,
   approveJoin, denyJoin, setMembers, putPantry, dropPantry, putTrip, putPayment,
   codeTaken, nameTaken, myHouseCodes, releaseCode, renameHouse, ensureNameIndex, deleteHouse, removeMember, stop
