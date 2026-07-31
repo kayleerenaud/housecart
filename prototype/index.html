@@ -1621,9 +1621,26 @@ function itemSheet(id){
 }
 
 /* ═══════════ 3b. PANTRY — barcode + Open Food Facts ═══════════ */
-let stream=null, zx=null;
+let stream=null, zx=null, scanNudge=null;
 $("#btn-scan").onclick = startScan;
 $("#btn-scanstop").onclick = stopScan;
+
+// Type-the-barcode is ALWAYS available inside the scan box — a flaky camera
+// must never force someone back to typing every field by hand. Typed codes go
+// through the same Open Food Facts lookup, so they still auto-fill name/size/photo.
+function showTypeFallback(prompt){
+  if($("#bc-fallback")) return;
+  $("#scanbox").insertAdjacentHTML("beforeend",
+    `<div id="bc-fallback" style="margin-top:12px">
+       <p class="sub" style="margin:0 0 6px">${prompt}</p>
+       <div class="row">
+         <input class="field" id="bc-manual" inputmode="numeric" placeholder="e.g. 049000042566" style="margin:0">
+         <button class="btn sm" id="bc-go" style="white-space:nowrap">Look up</button>
+       </div>
+     </div>`);
+  $("#bc-go").onclick = () => { const v=$("#bc-manual").value.trim(); if(v) onBarcode(v); };
+  $("#bc-manual").onkeydown = ev => { if(ev.key==="Enter") $("#bc-go").click(); };
+}
 
 async function startScan(){
   $("#scanbox").classList.remove("hide");
@@ -1631,42 +1648,56 @@ async function startScan(){
   $("#btn-scanstop").classList.remove("hide");
   $("#bc-fallback")?.remove();                    // never stack fallbacks
   $("#scanstatus").textContent = "Starting camera…";
+  let camOk = false;
   try{
-    stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}});
-    $("#video").srcObject = stream; await $("#video").play();
-    $("#scanstatus").textContent = "Point at the barcode…";
     if("BarcodeDetector" in window){
-      const det = new BarcodeDetector({formats:["ean_13","ean_8","upc_a","upc_e","code_128"]});
+      // Android / Chrome native path — we drive the camera + a detect loop.
+      let formats = ["ean_13","ean_8","upc_a","upc_e","code_128"];
+      try{ const sup = await BarcodeDetector.getSupportedFormats();
+           formats = formats.filter(f=>sup.includes(f)); }catch(e){}
+      stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}}});
+      $("#video").srcObject = stream; await $("#video").play(); camOk = true;
+      $("#scanstatus").textContent = "Point at the barcode…";
+      const det = new BarcodeDetector(formats.length ? {formats} : undefined);
       const tick = async () => {
         if(!stream) return;
         try{ const c = await det.detect($("#video")); if(c.length) return onBarcode(c[0].rawValue); }catch(e){}
         requestAnimationFrame(tick);
       }; tick();
     } else if(window.ZXing){
+      // iOS Safari (no BarcodeDetector) + everything else. Let ZXing own the
+      // camera via decodeFromConstraints — the reliable path. Handing ZXing a
+      // stream we opened ourselves is what was silently failing on phones.
       zx = new ZXing.BrowserMultiFormatReader();
-      zx.decodeFromVideoElement($("#video"), (r)=>{ if(r) onBarcode(r.getText()); });
-    } else { $("#scanstatus").textContent = "No barcode reader available — add manually."; }
+      await zx.decodeFromConstraints(
+        {video:{facingMode:{ideal:"environment"}}}, $("#video"),
+        (result)=>{ if(result) onBarcode(result.getText()); });
+      camOk = true;
+      $("#scanstatus").textContent = "Point at the barcode…";
+    } else {
+      $("#scanstatus").textContent = "This browser can’t scan — type the barcode:";
+    }
   }catch(e){
-    // no camera (desktop / denied permission) — hide the dead black box, offer typing
+    // camera denied / unavailable (desktop, blocked permission, locked-down browser)
     $("#video").classList.add("hide");
     $("#btn-scanstop").classList.add("hide");
-    $("#scanstatus").innerHTML = "No camera here — <b>type the barcode instead:</b>";
-    $("#scanbox").insertAdjacentHTML("beforeend",
-      `<div id="bc-fallback" class="row" style="margin-top:12px">
-         <input class="field" id="bc-manual" inputmode="numeric" placeholder="e.g. 0049000042566" style="margin:0">
-         <button class="btn sm" id="bc-go" style="white-space:nowrap">Look up</button>
-       </div>`);
-    $("#bc-go").onclick = () => onBarcode($("#bc-manual").value.trim());
-    $("#bc-manual").onkeydown = ev => { if(ev.key==="Enter") $("#bc-go").click(); };
+    $("#scanstatus").innerHTML = "Couldn’t open the camera — <b>type the barcode instead:</b>";
   }
+  showTypeFallback(camOk ? "Not catching it? Type the barcode — still auto-fills:"
+                         : "Type the barcode — we’ll still auto-fill it:");
+  // camera up but nothing detected after a while → nudge them to the typed box
+  clearTimeout(scanNudge);
+  if(camOk) scanNudge = setTimeout(()=>{ $("#bc-manual") && ($("#scanstatus").textContent = "Still no luck? Type it below."); }, 12000);
 }
 function stopScan(){
+  clearTimeout(scanNudge); scanNudge=null;
   if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
-  if(zx){ try{zx.reset()}catch(e){} zx=null; }
+  if(zx){ try{zx.reset()}catch(e){} zx=null; }   // reset() also stops ZXing’s own camera stream
   $("#bc-fallback")?.remove();
   $("#scanbox").classList.add("hide");
 }
 async function onBarcode(code){
+  code = String(code||"").replace(/\D/g,"");      // tolerate stray spaces/pasted text
   if(!code) return;
   stopScan(); toast("Barcode " + code);
   let it = { id:crypto.randomUUID(), name:"Item "+code, brand:"", size:"", img:"", by:me.name, at:Date.now(), barcode:code, stock:"full", cat:"other" };
