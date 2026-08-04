@@ -563,7 +563,12 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
         <div id="scanbox" class="hide" style="margin-top:12px">
           <video id="video" playsinline muted></video>
           <p class="sub" id="scanstatus" style="margin-top:12px">Point at the barcode…</p>
-          <button class="btn ghost sm" id="btn-scanstop" style="margin-top:12px">Stop</button>
+          <div class="row" style="margin-top:12px">
+            <label class="btn ghost sm" style="white-space:nowrap;margin:0">Take a photo of it
+              <input type="file" id="bc-photo" accept="image/*" capture="environment" class="hide"></label>
+            <button class="btn ghost sm" id="btn-scanstop" style="white-space:nowrap;margin:0">Stop</button>
+          </div>
+          <p class="sub" id="scanbuild" style="opacity:.45;font-size:11px;margin-top:10px">scanner build 08-04b</p>
         </div>
       </div>
       <div class="card">
@@ -1642,6 +1647,10 @@ function showTypeFallback(prompt){
   $("#bc-manual").onkeydown = ev => { if(ev.key==="Enter") $("#bc-go").click(); };
 }
 
+// Formats worth trying. ITF/Code-39/Codabar matter for warehouse stores like
+// Costco, whose bulk packaging often isn't a plain UPC/EAN.
+const BC_FORMATS = ["ean_13","ean_8","upc_a","upc_e","code_128","itf","code_39","codabar"];
+
 async function startScan(){
   $("#scanbox").classList.remove("hide");
   $("#video").classList.remove("hide");
@@ -1652,12 +1661,12 @@ async function startScan(){
   try{
     if("BarcodeDetector" in window){
       // Android / Chrome native path — we drive the camera + a detect loop.
-      let formats = ["ean_13","ean_8","upc_a","upc_e","code_128"];
+      let formats = BC_FORMATS.slice();
       try{ const sup = await BarcodeDetector.getSupportedFormats();
            formats = formats.filter(f=>sup.includes(f)); }catch(e){}
       stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}}});
       $("#video").srcObject = stream; await $("#video").play(); camOk = true;
-      $("#scanstatus").textContent = "Point at the barcode…";
+      $("#scanstatus").textContent = "Camera on — line the barcode up inside the box.";
       const det = new BarcodeDetector(formats.length ? {formats} : undefined);
       const tick = async () => {
         if(!stream) return;
@@ -1673,22 +1682,57 @@ async function startScan(){
         {video:{facingMode:{ideal:"environment"}}}, $("#video"),
         (result)=>{ if(result) onBarcode(result.getText()); });
       camOk = true;
-      $("#scanstatus").textContent = "Point at the barcode…";
+      $("#scanstatus").textContent = "Camera on — line the barcode up inside the box.";
     } else {
-      $("#scanstatus").textContent = "This browser can’t scan — type the barcode:";
+      $("#scanstatus").textContent = "This browser can’t scan live — take a photo or type the barcode:";
     }
   }catch(e){
-    // camera denied / unavailable (desktop, blocked permission, locked-down browser)
+    // camera denied / unavailable — say exactly what's wrong and how to fix it
     $("#video").classList.add("hide");
-    $("#btn-scanstop").classList.add("hide");
-    $("#scanstatus").innerHTML = "Couldn’t open the camera — <b>type the barcode instead:</b>";
+    let msg;
+    if(e && e.name === "NotAllowedError")
+      msg = "Camera is blocked for this site. In Safari tap the <b>AA</b> at the left of the address bar → <b>Website Settings</b> → <b>Camera</b> → <b>Allow</b>, then tap Scan again.";
+    else if(e && e.name === "NotFoundError")
+      msg = "No camera found on this device.";
+    else
+      msg = "Couldn’t open the camera here.";
+    $("#scanstatus").innerHTML = msg + "<br><b>Take a photo of the barcode</b> or type it below instead.";
   }
-  showTypeFallback(camOk ? "Not catching it? Type the barcode — still auto-fills:"
-                         : "Type the barcode — we’ll still auto-fill it:");
-  // camera up but nothing detected after a while → nudge them to the typed box
+  showTypeFallback(camOk ? "Camera not catching it? Take a photo above, or type the barcode — still auto-fills:"
+                         : "Take a photo above, or type the barcode — we’ll still auto-fill it:");
+  // camera up but nothing detected after a while → point them at the surer paths
   clearTimeout(scanNudge);
-  if(camOk) scanNudge = setTimeout(()=>{ $("#bc-manual") && ($("#scanstatus").textContent = "Still no luck? Type it below."); }, 12000);
+  if(camOk) scanNudge = setTimeout(()=>{ if($("#bc-manual")) $("#scanstatus").innerHTML =
+    "Still not catching it? <b>Take a photo of the barcode</b> (button below) — that reads even tricky ones."; }, 9000);
 }
+
+// Photo path: decode a STILL image of the barcode. This is the sturdiest option
+// on iPhones, where live-video decoding is finicky — a sharp still reads reliably.
+async function decodePhoto(file){
+  if(!file) return;
+  $("#scanstatus").textContent = "Reading the photo…";
+  const url = URL.createObjectURL(file);
+  try{
+    let code = null;
+    if(window.ZXing){
+      const reader = new ZXing.BrowserMultiFormatReader();
+      try{ const r = await reader.decodeFromImageUrl(url); code = r && r.getText(); }
+      finally{ try{ reader.reset(); }catch(e){} }
+    } else if("BarcodeDetector" in window){
+      const bmp = await createImageBitmap(file);
+      const c = await new BarcodeDetector({formats:BC_FORMATS}).detect(bmp);
+      if(c.length) code = c[0].rawValue;
+    }
+    if(code) return onBarcode(code);
+    $("#scanstatus").innerHTML = "Couldn’t read that photo. Get the barcode <b>sharp, level, and filling the frame</b> — then try again, or type the number below.";
+  }catch(e){
+    $("#scanstatus").innerHTML = "Couldn’t read that photo — try again with the barcode filling the frame, or type it below.";
+  }finally{ URL.revokeObjectURL(url); }
+}
+document.addEventListener("change", e => {
+  if(e.target.id === "bc-photo"){ const f = e.target.files[0]; e.target.value = ""; decodePhoto(f); }
+});
+
 function stopScan(){
   clearTimeout(scanNudge); scanNudge=null;
   if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
@@ -1696,21 +1740,33 @@ function stopScan(){
   $("#bc-fallback")?.remove();
   $("#scanbox").classList.add("hide");
 }
+// Try the whole Open*Facts family, not just food — Costco carries a lot of
+// household/beauty items that only live in the products/beauty databases.
+async function lookupProduct(code){
+  const hosts = ["world.openfoodfacts.org","world.openproductsfacts.org","world.openbeautyfacts.org"];
+  for(const h of hosts){
+    try{
+      const r = await fetch(`https://${h}/api/v2/product/${code}.json?fields=product_name,brands,quantity,image_front_small_url,categories`);
+      const j = await r.json();
+      if(j.status===1 && j.product && (j.product.product_name || j.product.brands)) return j.product;
+    }catch(e){}
+  }
+  return null;
+}
 async function onBarcode(code){
   code = String(code||"").replace(/\D/g,"");      // tolerate stray spaces/pasted text
   if(!code) return;
   stopScan(); toast("Barcode " + code);
   let it = { id:crypto.randomUUID(), name:"Item "+code, brand:"", size:"", img:"", by:me.name, at:Date.now(), barcode:code, stock:"full", cat:"other" };
   try{
-    const r = await fetch(`https://world.openfoodfacts.org/api/v2/product/${code}.json?fields=product_name,brands,quantity,image_front_small_url`);
-    const j = await r.json();
-    if(j.status===1){
-      it.name  = j.product.product_name || it.name;
-      it.brand = j.product.brands || "";
-      it.size  = j.product.quantity || "";
-      it.img   = j.product.image_front_small_url || "";
-      it.cat   = guessCat([it.name, it.brand, j.product.categories||""].join(" "));
-    } else toast("Not in the product database — name it yourself");
+    const prod = await lookupProduct(code);
+    if(prod){
+      it.name  = prod.product_name || it.name;
+      it.brand = prod.brands || "";
+      it.size  = prod.quantity || "";
+      it.img   = prod.image_front_small_url || "";
+      it.cat   = guessCat([it.name, it.brand, prod.categories||""].join(" "));
+    } else toast("Scanned " + code + " — not in the database, just name it");
   }catch(e){ toast("Lookup failed — offline?"); }
   H().pantry.unshift(it); save(); render();
   await cloud("putPantry", cur, it);
