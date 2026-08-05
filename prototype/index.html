@@ -810,6 +810,16 @@ async function cloud(fn, ...args){
   }
 }
 
+/* Same bridge, but for writes the app can live without. The barcode book is a
+   bonus layered on top of a local copy that already works, so if the published
+   rules predate it the write is simply skipped — no red banner across someone's
+   shopping over a feature that's still doing its job on this phone. */
+async function cloudQuiet(fn, ...args){
+  if(!CLOUD()) return;
+  try { return await window.HC_SYNC[fn](...args); }
+  catch(e){ console.warn("sync." + fn, (e && e.code) || e); }
+}
+
 let me = DB.get("me", null);
 let houses = DB.get("houses", {});      // code -> {code,name,members:[{id,name,email,pic,venmo}],pantry:[],trips:[]}
 let cur = DB.get("cur", null);          // current house code
@@ -1838,7 +1848,7 @@ async function saveUnknown(code){
   save(); closeSheet(); render();
   toast("Added — this house will know it next time");
   await cloud("putPantry", cur, it);
-  await cloud("putBarcode", cur, entry);
+  await cloudQuiet("putBarcode", cur, entry);
 }
 
 $("#btn-manual").onclick = () => sheet(`
