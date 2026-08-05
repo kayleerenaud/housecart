@@ -135,7 +135,7 @@ function watchHouses(uid, houses, onChange){
       const prev = houses[d.id] || {};
       houses[d.id] = { ...prev, ...h, code:d.id,
         pantry: prev.pantry || [], trips: prev.trips || [], payments: prev.payments || [],
-        pending: prev.pending || [] };
+        barcodes: prev.barcodes || [], pending: prev.pending || [] };
 
       if(!seen.has(d.id)){
         const subs = [];
@@ -147,6 +147,7 @@ function watchHouses(uid, houses, onChange){
         bind("pantry",   (a,b) => (b.at||0) - (a.at||0));
         bind("trips",    (a,b) => (b.at||0) - (a.at||0));
         bind("payments", (a,b) => (b.at||0) - (a.at||0));
+        bind("barcodes", (a,b) => (b.at||0) - (a.at||0));
         // join requests are admin-visible only; a permission error here is expected for non-admins
         subs.push(onSnapshot(collection(db,"houses",d.id,"joinRequests"), s => {
           const rows = []; s.forEach(x => rows.push({ ...x.data(), id:x.id }));
@@ -277,6 +278,11 @@ const denyJoin = (code, uid) => deleteDoc(doc(db,"houses",code,"joinRequests",ui
 const setMembers = (code, members) =>
   updateDoc(doc(db,"houses",code), { members: clean(members) });
 
+/* The house's barcode book: products no database knew, named by a member.
+   Keyed by the barcode itself, so scanning the same box anywhere in the house
+   resolves without another lookup — and without anyone naming it twice. */
+const putBarcode = (code, entry) => setDoc(doc(db,"houses",code,"barcodes",String(entry.id)), clean(entry));
+
 const putPantry  = (code, item) => setDoc(doc(db,"houses",code,"pantry",item.id), clean(item));
 const dropPantry = (code, id)   => deleteDoc(doc(db,"houses",code,"pantry",id));
 const putTrip    = (code, t)    => setDoc(doc(db,"houses",code,"trips",t.id), clean(t));
@@ -295,7 +301,7 @@ async function deleteHouse(code){
      route works, so a name can't be stranded whichever way we came in. */
   let nameCleared = false;
   try { await deleteDoc(doc(db,"houseCodes",code)); nameCleared = true; } catch(e){}
-  for(const sub of ["pantry","trips","payments","joinRequests"]){
+  for(const sub of ["pantry","trips","payments","barcodes","joinRequests"]){
     try {
       const snap = await getDocs(collection(db,"houses",code,sub));
       await Promise.all(snap.docs.map(d => deleteDoc(d.ref)));
@@ -322,7 +328,7 @@ window.HC_SYNC = {
   ready: true, signInWithGoogle, completeRedirect, redirectPending, clearRedirecting,
   signInWithGoogleIdToken, onUser, signOutFirebase: () => signOut(auth),
   watchHouses, watchMyRequest, peekHouse, createHouse, requestJoin, cancelJoin,
-  approveJoin, denyJoin, setMembers, putPantry, dropPantry, putTrip, putPayment,
+  approveJoin, denyJoin, setMembers, putPantry, dropPantry, putTrip, putPayment, putBarcode,
   codeTaken, nameTaken, myHouseCodes, releaseCode, renameHouse, ensureNameIndex, deleteHouse, removeMember, stop
 };
 window.dispatchEvent(new Event("hc-sync-ready"));

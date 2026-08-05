@@ -1477,15 +1477,22 @@ const CATS = {
 const CAT_ORDER = ["produce","dairy","meat","frozen","pantry","drinks","household","other"];
 
 /* best-effort guess from the product name — always editable */
+/* Names are matched on WHOLE WORDS. Substrings look clever until "Shampoo"
+   files itself under meat because it contains "ham", and a tin of "Canned
+   tomatoes" becomes household because of "can". Order matters too: the
+   non-food aisles are tested first (a nappy is not produce), and crisps are
+   claimed by snacks before "potato" can drag them into produce. */
 function guessCat(text){
-  const s = (text||"").toLowerCase();
-  if(/lettuce|spinach|kale|tomato|banana|apple|orange|berr|onion|potato|carrot|pepper|avocado|cucumber|broccoli|salad|herb|lemon|lime|grape|melon|mushroom|celery|produce|fruit|veg/.test(s)) return "produce";
-  if(/frozen|ice cream|popsicle|freezer/.test(s)) return "frozen";
-  if(/milk|cheese|yogurt|yoghurt|butter|cream|egg|dairy|kefir|cottage/.test(s)) return "dairy";
-  if(/chicken|beef|pork|turkey|bacon|sausage|steak|ham|lamb|fish|salmon|tuna|shrimp|meat|tofu/.test(s)) return "meat";
-  if(/soap|towel|detergent|trash|bag|cleaner|sponge|tissue|toilet|paper|bleach|wipe|foil|wrap/.test(s)) return "household";
-  if(/water|soda|cola|juice|coffee|tea|beer|wine|brew|drink|seltzer|lemonade|kombucha/.test(s)) return "drinks";
-  if(/bread|pasta|rice|cereal|flour|sugar|oil|sauce|bean|soup|snack|chip|cracker|cookie|peanut|jam|honey|spice|salt|can/.test(s)) return "pantry";
+  const s = " " + (text||"").toLowerCase().replace(/[^a-z0-9]+/g," ") + " ";
+  const has = words => new RegExp("\\b(?:" + words + ")\\b").test(s);
+  if(has("shampoo|conditioner|soap|bodywash|lotion|deodorant|toothpaste|toothbrush|razor|shave|diaper|diapers|nappy|nappies|wipe|wipes|detergent|bleach|cleaner|sponge|trash|bin|bags|tissue|tissues|toilet|towel|towels|napkin|napkins|foil|wrap|batteries|battery|lightbulb|candle|sunscreen|shaving|floss|sanitizer")) return "household";
+  if(has("frozen|freezer|ice cream|popsicle|popsicles")) return "frozen";
+  if(has("water|soda|cola|coke|pepsi|juice|coffee|tea|beer|wine|cider|seltzer|lemonade|kombucha|smoothie|espresso|drink|drinks|beverage")) return "drinks";
+  if(has("milk|cheese|yogurt|yoghurt|butter|cream|eggs|egg|dairy|kefir|cottage|mozzarella|cheddar|parmesan")) return "dairy";
+  if(has("chicken|beef|pork|turkey|bacon|sausage|steak|ham|lamb|fish|salmon|tuna|shrimp|meat|tofu|jerky|deli")) return "meat";
+  if(has("chip|chips|crisp|crisps|cracker|crackers|cookie|cookies|snack|snacks|nuts|popcorn|pretzel|pretzels|candy|chocolate|granola|bar|bars")) return "pantry";
+  if(has("lettuce|spinach|kale|tomato|tomatoes|banana|bananas|apple|apples|orange|oranges|berry|berries|strawberr|blueberr|onion|onions|potato|potatoes|carrot|carrots|pepper|peppers|avocado|cucumber|broccoli|salad|herbs|lemon|lime|grape|grapes|melon|mushroom|mushrooms|celery|produce|fruit|fruits|vegetable|vegetables")) return "produce";
+  if(has("bread|bagel|tortilla|pasta|noodle|noodles|rice|cereal|oats|oatmeal|flour|sugar|oil|olive oil|vinegar|sauce|salsa|beans|bean|soup|peanut|jam|jelly|honey|syrup|spice|spices|salt|pepper|canned|tin|broth|stock|baking")) return "pantry";
   return "other";
 }
 
@@ -1740,36 +1747,98 @@ function stopScan(){
   $("#bc-fallback")?.remove();
   $("#scanbox").classList.add("hide");
 }
-// Try the whole Open*Facts family, not just food — Costco carries a lot of
-// household/beauty items that only live in the products/beauty databases.
+/* ═══ barcode → product ═══════════════════════════════════════════════════
+   Three places get asked, in order of how much they know about YOUR shelf:
+
+     1. the house's own barcode book — anything a member has named by hand
+     2. /api/product — four databases behind one call (Open*Facts, UPCitemdb,
+        Go-UPC, USDA), asked server-side because some of them refuse browsers
+     3. Open Food Facts direct — the old path, kept as a lifeboat for when the
+        app is opened somewhere the serverless function doesn't exist
+
+   A barcode is a number, not a name: 12-digit UPC, 13-digit EAN and 8-digit
+   UPC-E all point at the same tin, so the key is compared loosely. */
+const bkey = c => String(c||"").replace(/\D/g,"").replace(/^0+/,"");
+const BOOK = () => (H() && H().barcodes) || [];
+const bookLookup = code => BOOK().find(b => bkey(b.id) === bkey(code)) || null;
+
 async function lookupProduct(code){
-  const hosts = ["world.openfoodfacts.org","world.openproductsfacts.org","world.openbeautyfacts.org"];
-  for(const h of hosts){
+  const known = bookLookup(code);
+  if(known) return { name:known.name, brand:known.brand||"", size:known.size||"", img:known.img||"",
+                     cat:known.cat||"", source:"your house" };
+  try{
+    const r = await fetch(`/api/product?code=${encodeURIComponent(code)}`);
+    if(r.ok){
+      const j = await r.json();
+      if(j && j.ok) return { name:j.name, brand:j.brand||"", size:j.size||"", img:j.img||"",
+                             cathint:j.cathint||"", source:j.source };
+    }
+  }catch(e){ /* no function here (local preview, or offline) — try direct */ }
+  for(const h of ["world.openfoodfacts.org","world.openproductsfacts.org","world.openbeautyfacts.org"]){
     try{
       const r = await fetch(`https://${h}/api/v2/product/${code}.json?fields=product_name,brands,quantity,image_front_small_url,categories`);
       const j = await r.json();
-      if(j.status===1 && j.product && (j.product.product_name || j.product.brands)) return j.product;
+      const p = j.status===1 && j.product;
+      if(p && (p.product_name || p.brands))
+        return { name:p.product_name || p.brands, brand:p.brands||"", size:p.quantity||"",
+                 img:p.image_front_small_url||"", cathint:p.categories||"", source:"openfoodfacts" };
     }catch(e){}
   }
   return null;
 }
+
 async function onBarcode(code){
   code = String(code||"").replace(/\D/g,"");      // tolerate stray spaces/pasted text
   if(!code) return;
-  stopScan(); toast("Barcode " + code);
-  let it = { id:crypto.randomUUID(), name:"Item "+code, brand:"", size:"", img:"", by:me.name, at:Date.now(), barcode:code, stock:"full", cat:"other" };
-  try{
-    const prod = await lookupProduct(code);
-    if(prod){
-      it.name  = prod.product_name || it.name;
-      it.brand = prod.brands || "";
-      it.size  = prod.quantity || "";
-      it.img   = prod.image_front_small_url || "";
-      it.cat   = guessCat([it.name, it.brand, prod.categories||""].join(" "));
-    } else toast("Scanned " + code + " — not in the database, just name it");
-  }catch(e){ toast("Lookup failed — offline?"); }
+  stopScan(); toast("Looking up " + code + "…");
+  let prod = null, failed = false;
+  try{ prod = await lookupProduct(code); }
+  catch(e){ failed = true; }
+
+  /* Nothing anywhere. Rather than parking a row called "Item 096619062454" in
+     the pantry, ask what it is — and REMEMBER the answer, so the next person to
+     scan that box gets it straight away. */
+  if(!prod) return unknownBarcode(code, failed);
+
+  const it = { id:crypto.randomUUID(), name:prod.name, brand:prod.brand, size:prod.size, img:prod.img,
+    by:me.name, at:Date.now(), barcode:code, stock:"full",
+    cat: prod.cat || guessCat([prod.name, prod.brand, prod.cathint||""].join(" ")) };
   H().pantry.unshift(it); save(); render();
+  toast(it.name + (prod.source==="your house" ? " — from your house's list" : ""));
   await cloud("putPantry", cur, it);
+}
+
+function unknownBarcode(code, failed){
+  toast(failed ? "Couldn't reach the databases — name it yourself" : "No database knows that one");
+  sheet(`
+    <h2>What is it?</h2>
+    <p class="muted" style="margin:-4px 0 10px">${failed
+      ? "We couldn't reach the product databases just now."
+      : "We checked four product databases and none of them have <b>"+code+"</b>."}
+      Name it once and everyone in the house gets it automatically next time.</p>
+    <input class="field" id="u-name" placeholder="e.g. Kirkland maple syrup" autofocus>
+    <div class="row"><input class="field" id="u-brand" placeholder="Brand (optional)"><input class="field" id="u-size" placeholder="Size (optional)"></div>
+    <label class="btn ghost" style="margin-top:4px">Add a photo<input type="file" id="m-img" accept="image/*" capture="environment" class="hide"></label>
+    <img id="m-prev" class="hide" style="width:100%;max-height:170px;object-fit:cover;border-radius:11px;margin-top:8px">
+    <button class="btn" style="margin-top:10px" onclick="saveUnknown('${code}')">Add to pantry</button>`);
+}
+
+async function saveUnknown(code){
+  const n = $("#u-name").value.trim(); if(!n) return toast("Give it a name");
+  const img = $("#m-prev").classList.contains("hide") ? "" : $("#m-prev").src;
+  const brand = $("#u-brand").value.trim(), size = $("#u-size").value.trim();
+  const cat = guessCat(n + " " + brand);
+  const it = { id:crypto.randomUUID(), name:n, brand, size, img, by:me.name, at:Date.now(),
+               barcode:code, stock:"full", cat };
+  H().pantry.unshift(it);
+  /* Teach the house. Photos are left out of the book on purpose — a data-URL
+     snapshot can be megabytes, and Firestore documents stop at one. */
+  const entry = { id:code, name:n, brand, size, img: /^https?:/.test(img) ? img : "", cat, by:me.name, at:Date.now() };
+  H().barcodes = [entry, ...BOOK().filter(b => bkey(b.id) !== bkey(code))];
+  save(); closeSheet(); render();
+  toast("Added — this house will know it next time");
+  await cloud("putPantry", cur, it);
+  await cloud("putBarcode", cur, entry);
 }
 
 $("#btn-manual").onclick = () => sheet(`

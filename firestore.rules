@@ -49,6 +49,9 @@ service cloud.firestore {
       match /pantry/{item} { allow read, write: if isMember(code); }
       match /trips/{trip} { allow read, write: if isMember(code); }
       match /payments/{pay} { allow read, write: if isMember(code); }
+      /* The house's barcode book — products the public databases don't carry,
+         named by a member. Same trust boundary as the pantry it feeds. */
+      match /barcodes/{bc} { allow read, write: if isMember(code); }
     }
   }
 }
