@@ -283,6 +283,11 @@ const setMembers = (code, members) =>
    resolves without another lookup — and without anyone naming it twice. */
 const putBarcode = (code, entry) => setDoc(doc(db,"houses",code,"barcodes",String(entry.id)), clean(entry));
 
+/* Whether this house settles debts directly or lets them net across everyone.
+   It has to be shared: two housemates on different settings would be chasing
+   different payments. */
+const setSimplify = (code, on) => updateDoc(doc(db,"houses",code), { simplify: !!on });
+
 const putPantry  = (code, item) => setDoc(doc(db,"houses",code,"pantry",item.id), clean(item));
 const dropPantry = (code, id)   => deleteDoc(doc(db,"houses",code,"pantry",id));
 const putTrip    = (code, t)    => setDoc(doc(db,"houses",code,"trips",t.id), clean(t));
@@ -328,7 +333,7 @@ window.HC_SYNC = {
   ready: true, signInWithGoogle, completeRedirect, redirectPending, clearRedirecting,
   signInWithGoogleIdToken, onUser, signOutFirebase: () => signOut(auth),
   watchHouses, watchMyRequest, peekHouse, createHouse, requestJoin, cancelJoin,
-  approveJoin, denyJoin, setMembers, putPantry, dropPantry, putTrip, putPayment, putBarcode,
+  approveJoin, denyJoin, setMembers, putPantry, dropPantry, putTrip, putPayment, putBarcode, setSimplify,
   codeTaken, nameTaken, myHouseCodes, releaseCode, renameHouse, ensureNameIndex, deleteHouse, removeMember, stop
 };
 window.dispatchEvent(new Event("hc-sync-ready"));

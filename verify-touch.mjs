@@ -43,6 +43,7 @@ const AUDIT = `(() => {
     if(el.getAttribute('onclick')) return true;
     if(el.tagName==='A' && el.getAttribute('href')) return true;
     if(el.tagName==='LABEL') return true;                       // opens its input
+    if(el.closest('label')) return true;                        // text inside a label toggles it too
     if(el.tagName==='INPUT'||el.tagName==='SELECT') return true;
     if(el.closest('[onclick]')) return true;                    // handled by an ancestor
     let n = el.parentElement;

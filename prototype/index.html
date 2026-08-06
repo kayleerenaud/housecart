@@ -645,7 +645,18 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
           <p class="sub" style="margin-bottom:7px">Add your Venmo handle so getting paid back doesn't require a conversation.</p>
           <button class="btn sm" id="btn-nudge-venmo" data-ref="venmo-nudge-btn">Link @handle</button>
         </div>
+        <div id="elsewhere"></div>
         <button class="btn ghost" id="btn-squareup" data-ref="square-up-btn" style="margin-top:12px">Square up</button>
+      </div>
+      <div class="card" data-ref="simplify-card">
+        <label style="display:flex;align-items:center;gap:12px;cursor:pointer">
+          <input type="checkbox" id="simplify-toggle" data-ref="simplify-toggle" style="width:20px;height:20px;flex:0 0 auto;accent-color:var(--tint)">
+          <span style="flex:1;min-width:0">
+            <b style="display:block">Shorten the payments</b>
+            <span class="sub" id="simplify-note">Off. You settle directly with each housemate.</span>
+          </span>
+        </label>
+        <p class="sub" style="margin-top:10px">If Sam owes Jenny $5 and Jenny owes Sam $5, nobody pays anything. Longer loops collapse the same way — three payments around a circle become none, and a chain becomes one. Everyone still ends up exactly square; the money just takes fewer hops. Changing this affects the whole house.</p>
       </div>
       <div class="card" data-ref="venmo-card">
         <h2>Venmo handles</h2>
@@ -2198,7 +2209,11 @@ function venmoLink(handle, amount, note, kind){
   return `https://venmo.com/${encodeURIComponent(h)}?txn=${txn}&amount=${amount.toFixed(2)}&note=${encodeURIComponent(note)}`;
 }
 /* Running balance, Splitwise-style: every trip and every payment accrues into
-   one number per housemate. Nothing needs settling receipt-by-receipt. */
+   one number per housemate. Nothing needs settling receipt-by-receipt.
+
+   This is the PAIRWISE view: what passed directly between you and each other
+   person. Debts in both directions already cancel here — you owe Sam for
+   Tuesday, he owes you for Friday, the two net to one number. */
 function netOwed(){
   const net = {}; H().members.forEach(m=>{ if(m.id!==me.id) net[m.id]=0; });
   H().trips.forEach(t=>{
@@ -2212,11 +2227,86 @@ function netOwed(){
   return net;
 }
 
+/* ── the whole house's position, in cents ────────────────────────────────
+   Pairwise netting can't see round trips: you owe Sam, Sam owes Jenny, Jenny
+   owes you. Three payments to move nothing. To collapse that, you have to
+   stop thinking in pairs and ask what each PERSON is up or down overall —
+   positive means the house owes them. Every number here is integer cents, so
+   the transfers below can't drift a penny from the debts they replace. */
+function houseNetCents(){
+  const bal = {}; H().members.forEach(m => bal[m.id] = 0);
+  const c = n => Math.round(n*100);
+  (H().trips||[]).forEach(t => {
+    Object.entries(t.owed||{}).forEach(([u,v]) => {
+      if(u === t.payer || !(u in bal) || !(t.payer in bal)) return;
+      bal[u] -= c(v); bal[t.payer] += c(v);          // the payer fronted their share
+    });
+  });
+  (H().payments||[]).forEach(p => {
+    if(!(p.from in bal) || !(p.to in bal)) return;
+    bal[p.from] += c(p.amount); bal[p.to] -= c(p.amount);
+  });
+  return bal;
+}
+
+/* Fewest payments that clear the house: repeatedly send the biggest debtor's
+   money to the biggest creditor. Greedy isn't provably the theoretical minimum
+   in every exotic case (that problem is NP-hard), but for a household it is
+   both minimal in practice and — more importantly — obviously fair to read:
+   nobody is asked to pay more than they owe, or paid more than they're due. */
+function simplifiedTransfers(){
+  const bal = houseNetCents();
+  const owe = Object.entries(bal).filter(([,v]) => v < 0).map(([id,v]) => ({id, v:-v}));
+  const get = Object.entries(bal).filter(([,v]) => v > 0).map(([id,v]) => ({id, v}));
+  owe.sort((a,b) => b.v - a.v); get.sort((a,b) => b.v - a.v);
+  const out = [];
+  let i = 0, j = 0;
+  while(i < owe.length && j < get.length){
+    const amt = Math.min(owe[i].v, get[j].v);
+    if(amt > 0) out.push({ from:owe[i].id, to:get[j].id, amount:amt/100 });
+    owe[i].v -= amt; get[j].v -= amt;
+    if(owe[i].v === 0) i++;
+    if(get[j].v === 0) j++;
+  }
+  return out;
+}
+
+/* What the Settle tab shows: either the pairwise balances, or — if the house
+   has turned simplifying on — the shortest set of payments that clears
+   everyone. Same debts either way; fewer hands they pass through. */
+const SIMPLIFY = () => !!(H() && H().simplify);
+
+function settleRows(){
+  if(!SIMPLIFY()) return { rows: Object.entries(netOwed()).filter(([,v]) => Math.abs(v) > 0.005), others: [] };
+  const t = simplifiedTransfers(), rows = [], others = [];
+  t.forEach(x => {
+    if(x.to === me.id)        rows.push([x.from,  x.amount]);   // they pay you
+    else if(x.from === me.id) rows.push([x.to,   -x.amount]);   // you pay them
+    else others.push(x);                                        // settled elsewhere in the house
+  });
+  return { rows, others };
+}
+
 function renderSettle(){
-  const net = netOwed(), mem = H().members;
-  const rows = Object.entries(net).filter(([,v]) => Math.abs(v) > 0.005);
+  const mem = H().members;
+  const { rows, others } = settleRows();
   const mine = mem.find(m=>m.id===me.id) || {};
   const overall = rows.reduce((a,[,v])=>a+v, 0);
+  const nameOf = uid => (mem.find(x=>x.id===uid) || {name:"Housemate"}).name;
+
+  /* Simplifying changes who pays whom for EVERYONE, so it's a house setting,
+     not a personal one — two housemates chasing different payments would be
+     worse than not having it. */
+  $("#simplify-toggle") && ($("#simplify-toggle").checked = SIMPLIFY());
+  $("#simplify-note") && ($("#simplify-note").textContent = SIMPLIFY()
+    ? (others.length
+        ? `On. ${others.length} payment${others.length>1?'s':''} between other housemates were shortened too.`
+        : "On. Round trips are cancelled out before anyone pays.")
+    : "Off. You settle directly with each housemate.");
+  $("#elsewhere") && ($("#elsewhere").innerHTML = others.length
+    ? `<p class="sub" style="margin-top:11px;border-top:1px solid var(--separator);padding-top:11px">Elsewhere in the house</p>` +
+      others.map(x => `<div class="totrow"><span>${esc(nameOf(x.from))} → ${esc(nameOf(x.to))}</span><span class="sub">${money(x.amount)}</span></div>`).join("")
+    : "");
 
   $("#bal-head").innerHTML =
     Math.abs(overall) < 0.005 ? "You're all square."
@@ -2235,7 +2325,8 @@ function renderSettle(){
         <i style="${up ? `left:50%;width:${pct}%;background:var(--tint)`
                        : `right:50%;width:${pct}%;background:var(--label-2);opacity:.4`}"></i>
       </div>
-      <div class="seeamt">${money(Math.abs(v))}<small>${up?'owed':'owes'}</small></div>
+      <!-- "owed"/"owes" alone left you working out which direction it meant -->
+      <div class="seeamt">${money(Math.abs(v))}<small>${up?'owes you':'you owe'}</small></div>
       <svg class="chev" viewBox="0 0 8 14" aria-hidden="true"><path d="M1 1l6 6-6 6"/></svg>
     </div>`;
   }).join("") : `<div class="empty"><b>Perfectly balanced</b>Nobody owes anybody a cent. Go split a pizza and ruin it.</div>`;
@@ -2249,10 +2340,11 @@ function renderSettle(){
 /* Square up: Venmo link per person, and recording a payment adjusts the running
    balance instead of wiping trips clean. */
 $("#btn-squareup").onclick = () => {
-  const net = netOwed(), mem = H().members;
-  const rows = Object.entries(net).filter(([,v]) => Math.abs(v) > 0.005);
+  const mem = H().members;
+  const { rows } = settleRows();
   sheet(`<h2>Square up</h2>
-    <p class="sub" style="margin-bottom:10px">Send the request, then mark it once the money actually lands.</p>` +
+    <p class="sub" style="margin-bottom:10px">Send the request, then mark it once the money actually lands.${
+      SIMPLIFY() ? " Shortened: you may be paying someone you never shopped with." : ""}</p>` +
     rows.map(([uid,v])=>{
       const m = mem.find(x=>x.id===uid) || {name:"Housemate", venmo:""};
       const them = v > 0, amt = Math.abs(v);
@@ -2278,6 +2370,16 @@ function recordPayment(uid, amount, theyPaidMe){
 }
 
 $("#btn-nudge-venmo").onclick = () => { go("account"); setTimeout(()=>$("#acct-venmo")?.focus(), 80); };
+
+$("#simplify-toggle").onchange = async e => {
+  const on = e.target.checked;
+  H().simplify = on;
+  save(); render();
+  toast(on ? "Shortened — for everyone in the house" : "Back to settling person by person");
+  /* Older published rules don't know this field; the local view is already
+     correct, so a refusal isn't worth interrupting anyone over. */
+  await cloudQuiet("setSimplify", cur, on);
+};
 
 const VIBES = [
   {id:"minimal",   name:"Minimal",   sw:["#F7F6F4","#FFFFFF","#2E2A25"],
